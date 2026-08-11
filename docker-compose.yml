@@ -1,0 +1,21 @@
+services:
+  database:
+    image: postgres:16
+    container_name: verigate-database
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: verigate
+      POSTGRES_PASSWORD: verigate_dev_password
+      POSTGRES_DB: verigate
+    ports:
+      - "5432:5432"
+    volumes:
+      - verigate_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verigate -d verigate"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  verigate_postgres_data:
