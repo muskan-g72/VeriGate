@@ -15,3 +15,7 @@ coverage/
 htmlcov/
 
 artifacts/
+
+# IDE
+idea/
+vscode/
