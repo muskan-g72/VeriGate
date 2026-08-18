@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     app_name: str = "VeriGate API"
     app_version: str = "0.1.0"
     database_url: str
+    auth_secret_key: str
+    access_token_expire_minutes: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",

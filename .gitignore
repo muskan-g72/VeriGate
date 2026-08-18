@@ -17,5 +17,5 @@ htmlcov/
 artifacts/
 
 # IDE
-idea/
-vscode/
+.idea/
+.vscode/
