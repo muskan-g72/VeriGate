@@ -55,3 +55,30 @@ class VerificationRun(Base):
         cascade="all, delete-orphan",
         order_by="VerificationResult.created_at",
     )
+
+    def _result_count(self, result_status: str) -> int:
+        return sum(result.status == result_status for result in self.results)
+
+    @property
+    def total_cases(self) -> int:
+        return len(self.results)
+
+    @property
+    def pending_count(self) -> int:
+        return self._result_count("pending")
+
+    @property
+    def passed_count(self) -> int:
+        return self._result_count("passed")
+
+    @property
+    def failed_count(self) -> int:
+        return self._result_count("failed")
+
+    @property
+    def blocked_count(self) -> int:
+        return self._result_count("blocked")
+
+    @property
+    def skipped_count(self) -> int:
+        return self._result_count("skipped")

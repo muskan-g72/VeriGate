@@ -137,6 +137,7 @@ def list_verification_runs(
     return list(
         database_session.scalars(
             select(VerificationRun)
+            .options(selectinload(VerificationRun.results))
             .where(VerificationRun.test_suite_id == test_suite.id)
             .order_by(VerificationRun.created_at.desc())
         )

@@ -88,6 +88,9 @@ def test_create_run_snapshots_active_test_cases(client: TestClient) -> None:
 
     assert run["status"] == "pending"
     assert len(run["results"]) == 2
+    assert run["total_cases"] == 2
+    assert run["pending_count"] == 2
+    assert run["passed_count"] == 0
     assert {result["status"] for result in run["results"]} == {"pending"}
 
 
@@ -145,6 +148,8 @@ def test_updating_results_advances_and_completes_run(client: TestClient) -> None
         headers=headers,
     ).json()
     assert in_progress["status"] == "in_progress"
+    assert in_progress["passed_count"] == 1
+    assert in_progress["pending_count"] == 1
     assert in_progress["started_at"] is not None
     assert in_progress["completed_at"] is None
 
@@ -160,6 +165,9 @@ def test_updating_results_advances_and_completes_run(client: TestClient) -> None
         headers=headers,
     ).json()
     assert completed["status"] == "completed"
+    assert completed["passed_count"] == 1
+    assert completed["failed_count"] == 1
+    assert completed["pending_count"] == 0
     assert completed["completed_at"] is not None
 
 

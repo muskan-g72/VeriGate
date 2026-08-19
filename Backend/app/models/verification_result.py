@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.issue import Issue
     from app.models.test_case import TestCase
     from app.models.verification_run import VerificationRun
 
@@ -56,4 +57,7 @@ class VerificationResult(Base):
     )
     test_case: Mapped["TestCase"] = relationship(
         back_populates="verification_results"
+    )
+    issues: Mapped[list["Issue"]] = relationship(
+        back_populates="verification_result",
     )

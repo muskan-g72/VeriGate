@@ -40,6 +40,12 @@ class VerificationRunRead(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
+    total_cases: int
+    pending_count: int
+    passed_count: int
+    failed_count: int
+    blocked_count: int
+    skipped_count: int
 
     model_config = ConfigDict(from_attributes=True)
 

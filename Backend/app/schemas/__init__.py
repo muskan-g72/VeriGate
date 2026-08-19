@@ -1,4 +1,5 @@
 from app.schemas.auth import Token
+from app.schemas.issue import IssueCreate, IssueRead, IssueUpdate
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.test_case import TestCaseCreate, TestCaseRead, TestCaseUpdate
 from app.schemas.test_suite import TestSuiteCreate, TestSuiteRead, TestSuiteUpdate
@@ -13,6 +14,9 @@ from app.schemas.verification import (
 
 __all__ = [
     "ProjectCreate",
+    "IssueCreate",
+    "IssueRead",
+    "IssueUpdate",
     "ProjectRead",
     "ProjectUpdate",
     "TestSuiteCreate",

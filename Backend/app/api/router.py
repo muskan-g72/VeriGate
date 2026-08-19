@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.routes.auth import router as auth_router
 from app.api.routes.health import router as health_router
+from app.api.routes.issues import router as issues_router
 from app.api.routes.projects import router as projects_router
 from app.api.routes.test_cases import router as test_cases_router
 from app.api.routes.test_suites import router as test_suites_router
@@ -37,4 +38,9 @@ api_router.include_router(
 api_router.include_router(
     verification_runs_router,
     tags=["Verification Runs"],
+)
+
+api_router.include_router(
+    issues_router,
+    tags=["Issues"],
 )
