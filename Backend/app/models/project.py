@@ -2,41 +2,35 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, String, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.project import Project
+    from app.models.test_suite import TestSuite
+    from app.models.user import User
 
 
-class User(Base):
-    __tablename__ = "users"
+class Project(Base):
+    __tablename__ = "projects"
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True,
         default=uuid.uuid4,
     )
-    email: Mapped[str] = mapped_column(
-        String(320),
-        unique=True,
+    owner_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
         index=True,
+    )
+    name: Mapped[str] = mapped_column(
+        String(120),
         nullable=False,
     )
-    password_hash: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-    )
-    full_name: Mapped[str | None] = mapped_column(
-        String(100),
+    description: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
-    )
-    is_active: Mapped[bool] = mapped_column(
-        Boolean,
-        default=True,
-        server_default="true",
-        nullable=False,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -49,7 +43,9 @@ class User(Base):
         onupdate=func.now(),
         nullable=False,
     )
-    projects: Mapped[list["Project"]] = relationship(
-        back_populates="owner",
+
+    owner: Mapped["User"] = relationship(back_populates="projects")
+    test_suites: Mapped[list["TestSuite"]] = relationship(
+        back_populates="project",
         cascade="all, delete-orphan",
     )
