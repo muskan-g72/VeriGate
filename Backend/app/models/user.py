@@ -9,6 +9,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.project import Project
+    from app.models.verification_run import VerificationRun
 
 
 class User(Base):
@@ -52,4 +53,7 @@ class User(Base):
     projects: Mapped[list["Project"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan",
+    )
+    verification_runs: Mapped[list["VerificationRun"]] = relationship(
+        back_populates="created_by",
     )

@@ -5,6 +5,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.projects import router as projects_router
 from app.api.routes.test_cases import router as test_cases_router
 from app.api.routes.test_suites import router as test_suites_router
+from app.api.routes.verification_runs import router as verification_runs_router
 
 api_router = APIRouter()
 
@@ -31,4 +32,9 @@ api_router.include_router(
 api_router.include_router(
     test_cases_router,
     tags=["Test Cases"],
+)
+
+api_router.include_router(
+    verification_runs_router,
+    tags=["Verification Runs"],
 )

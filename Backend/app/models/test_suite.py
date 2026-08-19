@@ -10,6 +10,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.project import Project
     from app.models.test_case import TestCase
+    from app.models.verification_run import VerificationRun
 
 
 class TestSuite(Base):
@@ -40,6 +41,10 @@ class TestSuite(Base):
 
     project: Mapped["Project"] = relationship(back_populates="test_suites")
     test_cases: Mapped[list["TestCase"]] = relationship(
+        back_populates="test_suite",
+        cascade="all, delete-orphan",
+    )
+    verification_runs: Mapped[list["VerificationRun"]] = relationship(
         back_populates="test_suite",
         cascade="all, delete-orphan",
     )

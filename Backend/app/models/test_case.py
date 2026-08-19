@@ -9,6 +9,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.test_suite import TestSuite
+    from app.models.verification_result import VerificationResult
 
 
 class TestCase(Base):
@@ -52,3 +53,6 @@ class TestCase(Base):
     )
 
     test_suite: Mapped["TestSuite"] = relationship(back_populates="test_cases")
+    verification_results: Mapped[list["VerificationResult"]] = relationship(
+        back_populates="test_case",
+    )
