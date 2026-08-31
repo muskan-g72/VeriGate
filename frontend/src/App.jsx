@@ -8,6 +8,9 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { TestLibraryPage } from './pages/TestLibraryPage'
+import { TestCasesPage } from './pages/TestCasesPage'
+import { TestSuitesPage } from './pages/TestSuitesPage'
 
 function ProtectedRoute({ children }) {
   const { status } = useAuth()
@@ -31,6 +34,9 @@ export default function App() {
     <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
       <Route index element={<OverviewPage />} />
       <Route path="projects" element={<ProjectsPage />} />
+      <Route path="test-library" element={<TestLibraryPage />} />
+      <Route path="test-suites" element={<TestSuitesPage />} />
+      <Route path="test-cases" element={<TestCasesPage />} />
     </Route>
     <Route path="*" element={<NotFoundPage />} />
   </Routes></AuthProvider>

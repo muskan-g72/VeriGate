@@ -159,3 +159,31 @@ def test_required_text_fields_cannot_be_blank(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_delete_owned_test_case(client: TestClient) -> None:
+    headers, suite_id = build_test_suite(client, "delete.case@example.com")
+    test_case = create_test_case(client, headers, suite_id)
+
+    response = client.delete(
+        f"/api/v1/test-cases/{test_case['id']}", headers=headers
+    )
+
+    assert response.status_code == 204
+    assert client.get(
+        f"/api/v1/test-cases/{test_case['id']}", headers=headers
+    ).status_code == 404
+
+
+def test_cannot_delete_another_users_test_case(client: TestClient) -> None:
+    owner_headers, suite_id = build_test_suite(
+        client, "delete.case.owner@example.com"
+    )
+    test_case = create_test_case(client, owner_headers, suite_id)
+    other_headers, _ = build_test_suite(client, "delete.case.other@example.com")
+
+    response = client.delete(
+        f"/api/v1/test-cases/{test_case['id']}", headers=other_headers
+    )
+
+    assert response.status_code == 404

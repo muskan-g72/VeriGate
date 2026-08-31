@@ -51,3 +51,25 @@ export const projectsApi = {
     body: JSON.stringify(data),
   }),
 }
+
+export const testSuitesApi = {
+  list: (projectId) => request(`/api/v1/projects/${projectId}/test-suites`),
+  create: (projectId, data) => request(`/api/v1/projects/${projectId}/test-suites`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  update: (suiteId, data) => request(`/api/v1/test-suites/${suiteId}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  remove: (suiteId) => request(`/api/v1/test-suites/${suiteId}`, { method: 'DELETE' }),
+}
+
+export const testCasesApi = {
+  list: (suiteId) => request(`/api/v1/test-suites/${suiteId}/test-cases`),
+  create: (suiteId, data) => request(`/api/v1/test-suites/${suiteId}/test-cases`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  update: (caseId, data) => request(`/api/v1/test-cases/${caseId}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  remove: (caseId) => request(`/api/v1/test-cases/${caseId}`, { method: 'DELETE' }),
+}

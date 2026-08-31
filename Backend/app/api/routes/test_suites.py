@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -105,3 +105,18 @@ def update_test_suite(
     database_session.commit()
     database_session.refresh(test_suite)
     return test_suite
+
+
+@router.delete(
+    "/test-suites/{test_suite_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_test_suite(
+    test_suite_id: uuid.UUID,
+    current_user: CurrentUser,
+    database_session: Annotated[Session, Depends(get_db)],
+) -> Response:
+    test_suite = get_owned_test_suite(test_suite_id, current_user.id, database_session)
+    database_session.delete(test_suite)
+    database_session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
