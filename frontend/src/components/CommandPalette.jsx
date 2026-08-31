@@ -2,7 +2,7 @@ import { Search, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-const commands = [{ name: 'Overview', path: '/app' }, { name: 'Projects', path: '/app/projects' }, { name: 'Runs — Coming soon' }, { name: 'Test Library — Coming soon' }, { name: 'Issues — Coming soon' }, { name: 'Settings — Coming soon' }]
+const commands = [{ name: 'Overview', path: '/app' }, { name: 'Projects', path: '/app/projects' }, { name: 'Test Library', path: '/app/test-library' }, { name: 'Test Suites', path: '/app/test-suites' }, { name: 'Test Cases', path: '/app/test-cases' }, { name: 'Runs — Coming soon' }, { name: 'Issues — Coming soon' }, { name: 'Settings — Coming soon' }]
 export function CommandPalette({ open, onClose }) {
   const navigate = useNavigate()
   const inputRef = useRef(null)

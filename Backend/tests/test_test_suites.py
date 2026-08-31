@@ -135,3 +135,31 @@ def test_test_suite_name_cannot_be_blank(client: TestClient) -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_delete_owned_test_suite(client: TestClient) -> None:
+    headers = create_user_headers(client, "delete.suite@example.com")
+    project = create_project(client, headers)
+    test_suite = create_test_suite(client, headers, project["id"])
+
+    response = client.delete(
+        f"/api/v1/test-suites/{test_suite['id']}", headers=headers
+    )
+
+    assert response.status_code == 204
+    assert client.get(
+        f"/api/v1/test-suites/{test_suite['id']}", headers=headers
+    ).status_code == 404
+
+
+def test_cannot_delete_another_users_test_suite(client: TestClient) -> None:
+    owner_headers = create_user_headers(client, "delete.suite.owner@example.com")
+    project = create_project(client, owner_headers)
+    test_suite = create_test_suite(client, owner_headers, project["id"])
+    other_headers = create_user_headers(client, "delete.suite.other@example.com")
+
+    response = client.delete(
+        f"/api/v1/test-suites/{test_suite['id']}", headers=other_headers
+    )
+
+    assert response.status_code == 404

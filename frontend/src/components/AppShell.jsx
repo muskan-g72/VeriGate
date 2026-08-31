@@ -7,7 +7,7 @@ import { CommandPalette } from './CommandPalette'
 
 const groups = [
   ['Command', [[Gauge, 'Overview', '/app'], [Boxes, 'Projects', '/app/projects'], [Play, 'Runs']]],
-  ['Testing', [[BookOpen, 'Test Library'], [Layers3, 'Test Suites'], [TestTube2, 'Test Cases']]],
+  ['Testing', [[BookOpen, 'Test Library', '/app/test-library'], [Layers3, 'Test Suites', '/app/test-suites'], [TestTube2, 'Test Cases', '/app/test-cases']]],
   ['Quality', [[Bug, 'Issues'], [FlaskConical, 'Evidence']]],
   ['Infrastructure', [[Server, 'Environments'], [MonitorCog, 'Applications']]],
   ['Intelligence', [[Gauge, 'Insights'], [BrainCircuit, 'AI Lab']]],
@@ -18,13 +18,14 @@ const initials = (user) => (user?.full_name || user?.email || 'VG').split(/[\s@.
 export function AppShell() {
   const { user, logout } = useAuth()
   const location = useLocation()
-  const pageTitle = location.pathname === '/app/projects' ? 'Projects' : 'Overview'
+  const pageTitles = { '/app/projects': 'Projects', '/app/test-library': 'Test Library', '/app/test-suites': 'Test Suites', '/app/test-cases': 'Test Cases' }
+  const pageTitle = pageTitles[location.pathname] || 'Overview'
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [userOpen, setUserOpen] = useState(false)
   const userMenuRef = useRef(null)
-  const closePalette = useCallback(() => setPaletteOpen(false), [])
+  const closePalette = useCallback(() => setPaletteOpen(false), [setPaletteOpen])
   useEffect(() => { const shortcut = (event) => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setPaletteOpen((value) => !value) } }; document.addEventListener('keydown', shortcut); return () => document.removeEventListener('keydown', shortcut) }, [])
   useEffect(() => { const outside = (event) => { if (!userMenuRef.current?.contains(event.target)) setUserOpen(false) }; document.addEventListener('pointerdown', outside); return () => document.removeEventListener('pointerdown', outside) }, [])
   return <div className={`app-shell ${collapsed ? 'is-collapsed' : ''}`}>
