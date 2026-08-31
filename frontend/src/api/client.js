@@ -36,3 +36,18 @@ export const authApi = {
   login: (email, password) => request('/api/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ username: email, password }) }),
   me: () => request('/api/v1/auth/me'),
 }
+
+export const projectsApi = {
+  list: () => request('/api/v1/projects'),
+  read: (projectId) => request(`/api/v1/projects/${projectId}`),
+  create: (data) => request('/api/v1/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
+  update: (projectId, data) => request(`/api/v1/projects/${projectId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
+}
