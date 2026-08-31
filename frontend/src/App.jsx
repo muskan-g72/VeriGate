@@ -6,6 +6,7 @@ import { FullPageLoader } from './components/FullPageLoader'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { OverviewPage } from './pages/OverviewPage'
+import { ProjectsPage } from './pages/ProjectsPage'
 import { RegisterPage } from './pages/RegisterPage'
 
 function ProtectedRoute({ children }) {
@@ -27,7 +28,10 @@ export default function App() {
     <Route path="/" element={<Navigate to="/app" replace />} />
     <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
     <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
-    <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}><Route index element={<OverviewPage />} /></Route>
+    <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+      <Route index element={<OverviewPage />} />
+      <Route path="projects" element={<ProjectsPage />} />
+    </Route>
     <Route path="*" element={<NotFoundPage />} />
   </Routes></AuthProvider>
 }
