@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { projectsApi, testCasesApi, testSuitesApi } from '../api/client'
 import { chooseProject, rememberProject } from '../testLibrary/projectSelection'
 
-export function LibraryDialog({ kind, item, parentId, onClose, onSaved }) {
+export function LibraryDialog({ kind, item, parentId, parentOptions = [], onClose, onSaved }) {
   const isCase = kind === 'case'
   const [form, setForm] = useState(() => isCase ? {
     title: item?.title || '', description: item?.description || '', steps: item?.steps || '',
@@ -13,6 +13,7 @@ export function LibraryDialog({ kind, item, parentId, onClose, onSaved }) {
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [pending, setPending] = useState(false)
+  const [selectedParentId, setSelectedParentId] = useState(parentId || parentOptions[0]?.id || '')
   const firstInput = useRef(null)
   useEffect(() => { firstInput.current?.focus() }, [])
   useEffect(() => { const close = (event) => event.key === 'Escape' && !pending && onClose(); document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close) }, [onClose, pending])
@@ -29,7 +30,7 @@ export function LibraryDialog({ kind, item, parentId, onClose, onSaved }) {
     const payload = isCase ? { ...form, title: form.title.trim(), description: form.description.trim() || null, steps: form.steps.trim(), expected_result: form.expected_result.trim() } : { name: form.name.trim(), description: form.description.trim() || null }
     try {
       const saved = isCase
-        ? (item ? await testCasesApi.update(item.id, payload) : await testCasesApi.create(parentId, payload))
+        ? (item ? await testCasesApi.update(item.id, payload) : await testCasesApi.create(selectedParentId, payload))
         : (item ? await testSuitesApi.update(item.id, payload) : await testSuitesApi.create(parentId, payload))
       onSaved(saved)
     } catch (error) { setServerError(error.message) }
@@ -41,6 +42,7 @@ export function LibraryDialog({ kind, item, parentId, onClose, onSaved }) {
     <header><div><p className="eyebrow">Test definition</p><h2 id="library-dialog-title">{title}</h2></div><button onClick={onClose} disabled={pending} aria-label="Close"><X /></button></header>
     <form onSubmit={submit} noValidate>{serverError && <div className="form-alert" role="alert"><strong>Unable to save</strong><span>{serverError}</span></div>}
       <div className="field"><label htmlFor="definition-name">{isCase ? 'Title' : 'Suite name'}</label><input ref={firstInput} id="definition-name" maxLength={isCase ? 160 : 120} value={isCase ? form.title : form.name} disabled={pending} aria-invalid={Boolean(errors.name)} onChange={(event) => setForm({ ...form, [isCase ? 'title' : 'name']: event.target.value })} placeholder={isCase ? 'Valid user can sign in' : 'Authentication'} /><div className={`field-error ${errors.name ? 'is-visible' : ''}`} role="alert">{errors.name}</div></div>
+      {isCase && !item && parentOptions.length > 0 && <div className="field"><label htmlFor="case-suite">Test suite</label><select id="case-suite" value={selectedParentId} disabled={pending} onChange={(event) => setSelectedParentId(event.target.value)} required>{parentOptions.map((suite) => <option value={suite.id} key={suite.id}>{suite.name}</option>)}</select></div>}
       <div className="field"><label htmlFor="definition-description">Description <span>Optional</span></label><textarea id="definition-description" rows="3" value={form.description} disabled={pending} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Describe the verification scope." /></div>
       {isCase && <><div className="field"><label htmlFor="case-steps">Execution steps</label><textarea id="case-steps" rows="4" value={form.steps} disabled={pending} aria-invalid={Boolean(errors.steps)} onChange={(event) => setForm({ ...form, steps: event.target.value })} placeholder={'1. Enter valid credentials\n2. Submit the login form'} /><div className={`field-error ${errors.steps ? 'is-visible' : ''}`} role="alert">{errors.steps}</div></div><div className="field"><label htmlFor="case-expected">Expected result</label><textarea id="case-expected" rows="3" value={form.expected_result} disabled={pending} aria-invalid={Boolean(errors.expected_result)} onChange={(event) => setForm({ ...form, expected_result: event.target.value })} placeholder="The user is authenticated and redirected." /><div className={`field-error ${errors.expected_result ? 'is-visible' : ''}`} role="alert">{errors.expected_result}</div></div><div className="library-form-row"><div className="field"><label htmlFor="case-priority">Priority</label><select id="case-priority" value={form.priority} disabled={pending} onChange={(event) => setForm({ ...form, priority: event.target.value })}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></div>{item && <label className="active-toggle"><input type="checkbox" checked={form.is_active} disabled={pending} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} /><span>Active test case</span></label>}</div></>}
       <footer><button type="button" className="secondary-button" onClick={onClose} disabled={pending}>Cancel</button><button className="primary-button" disabled={pending}>{pending ? <><LoaderCircle className="spinner" />Saving...</> : <>Save {isCase ? 'case' : 'suite'}<ArrowRight /></>}</button></footer>

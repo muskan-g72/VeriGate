@@ -4,10 +4,13 @@ import { useAuth } from './auth/useAuth'
 import { AppShell } from './components/AppShell'
 import { FullPageLoader } from './components/FullPageLoader'
 import { LoginPage } from './pages/LoginPage'
+import { LandingPage } from './pages/LandingPage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { TestLibraryPage } from './pages/TestLibraryPage'
 import { TestCasesPage } from './pages/TestCasesPage'
 import { TestSuitesPage } from './pages/TestSuitesPage'
@@ -28,9 +31,11 @@ function GuestRoute({ children }) {
 
 export default function App() {
   return <AuthProvider><Routes>
-    <Route path="/" element={<Navigate to="/app" replace />} />
+    <Route path="/" element={<LandingPage />} />
     <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
     <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+    <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
+    <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
     <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
       <Route index element={<OverviewPage />} />
       <Route path="projects" element={<ProjectsPage />} />

@@ -1,4 +1,4 @@
-import { ArrowRight, Boxes, CalendarDays, LoaderCircle, Pencil, Plus, X } from 'lucide-react'
+﻿import { ArrowRight, Boxes, CalendarDays, LoaderCircle, Pencil, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { projectsApi } from '../api/client'
 
@@ -79,7 +79,7 @@ export function ProjectsPage() {
   }
 
   return <main className="projects-page">
-    <section className="projects-heading"><div><p className="eyebrow">Verification workspace</p><h2>Projects</h2><p>Create a durable home for test suites, runs, evidence, and issues.</p></div><button className="new-project-button" onClick={() => setEditing(null)}><Plus />New project</button></section>
+    <section className="projects-heading"><div><p className="eyebrow">Verification workspace</p><h2>Projects</h2><p>Create a durable home for test suites, runs, evidence and issues.</p></div><button className="new-project-button" onClick={() => setEditing(null)}><Plus />New project</button></section>
     {status === 'loading' && <div className="projects-state"><LoaderCircle className="spinner" /><p>Loading projects...</p></div>}
     {status === 'error' && <div className="projects-state projects-state--error"><p>{error}</p><button onClick={retryLoad}>Try again</button></div>}
     {status === 'ready' && projects.length === 0 && <section className="projects-empty"><div><Boxes /></div><p className="eyebrow">No records yet</p><h3>Create your first project</h3><p>Start with a name and description. You can refine the project as your verification scope grows.</p><button onClick={() => setEditing(null)}><Plus />Create project</button></section>}
