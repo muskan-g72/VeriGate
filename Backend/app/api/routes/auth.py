@@ -1,16 +1,18 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import jwt
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser
-from app.core.security import create_access_token, hash_password, verify_password
+from app.core.email import send_password_reset_email
+from app.core.security import create_access_token, create_password_reset_token, decode_password_reset_token, hash_password, verify_password
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.auth import Token
+from app.schemas.auth import ForgotPasswordRequest, MessageResponse, ResetPasswordRequest, Token
 from app.schemas.user import UserCreate, UserRead
 
 router = APIRouter(prefix="/auth")
@@ -72,3 +74,34 @@ def login(
 @router.get("/me", response_model=UserRead)
 def read_current_user(current_user: CurrentUser) -> User:
     return current_user
+
+
+@router.post("/forgot-password", response_model=MessageResponse, status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(
+    request: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
+    database_session: Annotated[Session, Depends(get_db)],
+) -> MessageResponse:
+    email = str(request.email).lower()
+    user = database_session.scalar(select(User).where(User.email == email))
+    if user is not None and user.is_active:
+        token = create_password_reset_token(email)
+        background_tasks.add_task(send_password_reset_email, email, token)
+    return MessageResponse(message="If an account exists for that email, a reset link has been sent.")
+
+
+@router.post("/reset-password", response_model=MessageResponse)
+def reset_password(
+    request: ResetPasswordRequest,
+    database_session: Annotated[Session, Depends(get_db)],
+) -> MessageResponse:
+    try:
+        email = decode_password_reset_token(request.token)
+    except jwt.InvalidTokenError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This reset link is invalid or has expired") from error
+    user = database_session.scalar(select(User).where(User.email == email))
+    if user is None or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This reset link is invalid or has expired")
+    user.password_hash = hash_password(request.password)
+    database_session.commit()
+    return MessageResponse(message="Your password has been updated.")

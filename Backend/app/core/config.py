@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     database_url: str
     auth_secret_key: str
     access_token_expire_minutes: int = 30
+    password_reset_expire_minutes: int = 20
+    gmail_username: str = ""
+    gmail_app_password: str = ""
+    email_from_name: str = "VeriGate"
+    frontend_url: str = "http://localhost:5173"
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIRECTORY / ".env",

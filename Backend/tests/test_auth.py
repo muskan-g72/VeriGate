@@ -113,3 +113,28 @@ def test_me_rejects_invalid_token(client: TestClient) -> None:
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Could not validate credentials"
+
+
+def test_forgot_password_has_generic_response(client: TestClient, monkeypatch) -> None:
+    register_user(client)
+    sent = []
+    monkeypatch.setattr("app.api.routes.auth.send_password_reset_email", lambda email, token: sent.append((email, token)))
+    response = client.post("/api/v1/auth/forgot-password", json={"email": USER_PAYLOAD["email"]})
+    assert response.status_code == 202
+    assert response.json()["message"] == "If an account exists for that email, a reset link has been sent."
+    assert sent[0][0] == USER_PAYLOAD["email"]
+
+
+def test_reset_password_changes_credentials(client: TestClient) -> None:
+    from app.core.security import create_password_reset_token
+    register_user(client)
+    token = create_password_reset_token(USER_PAYLOAD["email"])
+    response = client.post("/api/v1/auth/reset-password", json={"token": token, "password": "NewStrongPassword456!"})
+    assert response.status_code == 200
+    login_response = client.post("/api/v1/auth/login", data={"username": USER_PAYLOAD["email"], "password": "NewStrongPassword456!"})
+    assert login_response.status_code == 200
+
+
+def test_reset_password_rejects_invalid_token(client: TestClient) -> None:
+    response = client.post("/api/v1/auth/reset-password", json={"token": "invalid", "password": "NewStrongPassword456!"})
+    assert response.status_code == 400
