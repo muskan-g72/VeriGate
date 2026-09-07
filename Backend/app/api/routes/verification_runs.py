@@ -23,6 +23,10 @@ from app.schemas.verification import (
     VerificationRunRead,
 )
 from app.services.audit_service import record_audit_event
+from app.services.automated_verification import (
+    execute_automated_results,
+    sync_verification_run_status,
+)
 
 router = APIRouter()
 
@@ -35,7 +39,11 @@ def get_owned_verification_run(
 ) -> VerificationRun:
     verification_run = database_session.scalar(
         select(VerificationRun)
-        .options(selectinload(VerificationRun.results))
+        .options(
+            selectinload(VerificationRun.results).selectinload(
+                VerificationResult.evidence_items
+            )
+        )
         .where(VerificationRun.id == verification_run_id)
     )
     if verification_run is None:
@@ -61,9 +69,10 @@ def get_owned_verification_result(
     verification_result = database_session.scalar(
         select(VerificationResult)
         .options(
+            selectinload(VerificationResult.evidence_items),
             selectinload(VerificationResult.verification_run).selectinload(
                 VerificationRun.test_suite
-            )
+            ),
         )
         .where(VerificationResult.id == verification_result_id)
     )
@@ -86,7 +95,7 @@ def get_owned_verification_result(
     response_model=VerificationRunDetail,
     status_code=status.HTTP_201_CREATED,
 )
-def create_verification_run(
+async def create_verification_run(
     test_suite_id: uuid.UUID,
     run_data: VerificationRunCreate,
     current_user: CurrentUser,
@@ -123,6 +132,13 @@ def create_verification_run(
     ]
     database_session.add(verification_run)
     database_session.flush()
+    await execute_automated_results(
+        database_session,
+        verification_run=verification_run,
+        test_cases=active_test_cases,
+        user_id=current_user.id,
+        project_id=test_suite.project_id,
+    )
     record_audit_event(
         database_session,
         user_id=current_user.id,
@@ -210,27 +226,7 @@ def update_verification_result(
         current_user.id,
         database_session,
     )
-    result_statuses = [
-        result_data.status
-        if result.id == verification_result.id
-        else result.status
-        for result in verification_run.results
-    ]
-    if all(result_status in FINAL_RESULT_STATUSES for result_status in result_statuses):
-        verification_run.status = "completed"
-        verification_run.started_at = verification_run.started_at or now
-        verification_run.completed_at = now
-    elif any(
-        result_status in FINAL_RESULT_STATUSES or result_status == "running"
-        for result_status in result_statuses
-    ):
-        verification_run.status = "in_progress"
-        verification_run.started_at = verification_run.started_at or now
-        verification_run.completed_at = None
-    else:
-        verification_run.status = "pending"
-        verification_run.started_at = None
-        verification_run.completed_at = None
+    sync_verification_run_status(verification_run, now)
 
     audit_action = "failed" if result_data.status == "failed" else "updated"
     record_audit_event(
