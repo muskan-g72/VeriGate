@@ -8,19 +8,21 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import CurrentUser
 from app.api.routes.test_suites import get_owned_test_suite
+from app.core.permissions import EXECUTE_VERIFICATION_ROLES, VIEW_PROJECT_ROLES
 from app.db.session import get_db
-from app.models.project import Project
 from app.models.test_case import TestCase
 from app.models.test_suite import TestSuite
 from app.models.verification_result import VerificationResult
 from app.models.verification_run import VerificationRun
 from app.schemas.verification import (
+    FINAL_RESULT_STATUSES,
     VerificationResultRead,
     VerificationResultUpdate,
     VerificationRunCreate,
     VerificationRunDetail,
     VerificationRunRead,
 )
+from app.services.audit_service import record_audit_event
 
 router = APIRouter()
 
@@ -29,22 +31,24 @@ def get_owned_verification_run(
     verification_run_id: uuid.UUID,
     owner_id: uuid.UUID,
     database_session: Session,
+    allowed_roles: tuple[str, ...] | None = None,
 ) -> VerificationRun:
     verification_run = database_session.scalar(
         select(VerificationRun)
-        .join(TestSuite)
-        .join(Project)
         .options(selectinload(VerificationRun.results))
-        .where(
-            VerificationRun.id == verification_run_id,
-            Project.owner_id == owner_id,
-        )
+        .where(VerificationRun.id == verification_run_id)
     )
     if verification_run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Verification run not found",
         )
+    get_owned_test_suite(
+        verification_run.test_suite_id,
+        owner_id,
+        database_session,
+        allowed_roles or VIEW_PROJECT_ROLES,
+    )
     return verification_run
 
 
@@ -52,22 +56,28 @@ def get_owned_verification_result(
     verification_result_id: uuid.UUID,
     owner_id: uuid.UUID,
     database_session: Session,
+    allowed_roles: tuple[str, ...] | None = None,
 ) -> VerificationResult:
     verification_result = database_session.scalar(
         select(VerificationResult)
-        .join(VerificationRun)
-        .join(TestSuite)
-        .join(Project)
-        .where(
-            VerificationResult.id == verification_result_id,
-            Project.owner_id == owner_id,
+        .options(
+            selectinload(VerificationResult.verification_run).selectinload(
+                VerificationRun.test_suite
+            )
         )
+        .where(VerificationResult.id == verification_result_id)
     )
     if verification_result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Verification result not found",
         )
+    get_owned_test_suite(
+        verification_result.verification_run.test_suite_id,
+        owner_id,
+        database_session,
+        allowed_roles or VIEW_PROJECT_ROLES,
+    )
     return verification_result
 
 
@@ -86,6 +96,7 @@ def create_verification_run(
         test_suite_id,
         current_user.id,
         database_session,
+        EXECUTE_VERIFICATION_ROLES,
     )
     active_test_cases = list(
         database_session.scalars(
@@ -111,6 +122,16 @@ def create_verification_run(
         for test_case in active_test_cases
     ]
     database_session.add(verification_run)
+    database_session.flush()
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=test_suite.project_id,
+        action="executed",
+        resource_type="verification_run",
+        resource_id=verification_run.id,
+        description=f"Started verification run '{verification_run.name}'",
+    )
     database_session.commit()
     database_session.refresh(verification_run)
     return get_owned_verification_run(
@@ -174,13 +195,15 @@ def update_verification_result(
         verification_result_id,
         current_user.id,
         database_session,
+        EXECUTE_VERIFICATION_ROLES,
     )
     now = datetime.now(UTC)
     for field, value in result_data.model_dump(exclude_unset=True).items():
         setattr(verification_result, field, value)
-    verification_result.executed_at = (
-        None if result_data.status == "pending" else now
-    )
+    if result_data.status in FINAL_RESULT_STATUSES:
+        verification_result.executed_at = now
+    elif result_data.status in {"pending", "running"}:
+        verification_result.executed_at = None
 
     verification_run = get_owned_verification_run(
         verification_result.verification_run_id,
@@ -193,11 +216,14 @@ def update_verification_result(
         else result.status
         for result in verification_run.results
     ]
-    if all(result_status != "pending" for result_status in result_statuses):
+    if all(result_status in FINAL_RESULT_STATUSES for result_status in result_statuses):
         verification_run.status = "completed"
         verification_run.started_at = verification_run.started_at or now
         verification_run.completed_at = now
-    elif any(result_status != "pending" for result_status in result_statuses):
+    elif any(
+        result_status in FINAL_RESULT_STATUSES or result_status == "running"
+        for result_status in result_statuses
+    ):
         verification_run.status = "in_progress"
         verification_run.started_at = verification_run.started_at or now
         verification_run.completed_at = None
@@ -205,6 +231,17 @@ def update_verification_result(
         verification_run.status = "pending"
         verification_run.started_at = None
         verification_run.completed_at = None
+
+    audit_action = "failed" if result_data.status == "failed" else "updated"
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=verification_run.test_suite.project_id,
+        action=audit_action,
+        resource_type="verification_result",
+        resource_id=verification_result.id,
+        description=f"Updated verification result status to '{result_data.status}'",
+    )
 
     database_session.commit()
     database_session.refresh(verification_result)

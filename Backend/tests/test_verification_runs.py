@@ -171,6 +171,75 @@ def test_updating_results_advances_and_completes_run(client: TestClient) -> None
     assert completed["completed_at"] is not None
 
 
+def test_update_result_stores_failure_investigation_fields(
+    client: TestClient,
+) -> None:
+    headers, suite_id = create_run_context(client)
+    run = start_run(client, headers, suite_id)
+    result_id = run["results"][0]["id"]
+
+    response = client.patch(
+        f"/api/v1/verification-results/{result_id}",
+        headers=headers,
+        json={
+            "status": "failed",
+            "actual_result": "Got HTTP 500",
+            "failure_message": "Internal Server Error",
+            "stack_trace": "Traceback (most recent call last)...",
+            "duration": 1.25,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "failed"
+    assert payload["actual_result"] == "Got HTTP 500"
+    assert payload["failure_message"] == "Internal Server Error"
+    assert payload["stack_trace"] == "Traceback (most recent call last)..."
+    assert payload["duration"] == 1.25
+    assert payload["executed_at"] is not None
+
+
+def test_running_status_does_not_complete_run(client: TestClient) -> None:
+    headers, suite_id = create_run_context(client)
+    run = start_run(client, headers, suite_id)
+    first_result, second_result = run["results"]
+
+    client.patch(
+        f"/api/v1/verification-results/{first_result['id']}",
+        headers=headers,
+        json={"status": "running"},
+    )
+    in_progress = client.get(
+        f"/api/v1/verification-runs/{run['id']}",
+        headers=headers,
+    ).json()
+    assert in_progress["status"] == "in_progress"
+    assert in_progress["completed_at"] is None
+
+    client.patch(
+        f"/api/v1/verification-results/{first_result['id']}",
+        headers=headers,
+        json={"status": "passed"},
+    )
+    still_in_progress = client.get(
+        f"/api/v1/verification-runs/{run['id']}",
+        headers=headers,
+    ).json()
+    assert still_in_progress["status"] == "in_progress"
+
+    client.patch(
+        f"/api/v1/verification-results/{second_result['id']}",
+        headers=headers,
+        json={"status": "passed"},
+    )
+    completed = client.get(
+        f"/api/v1/verification-runs/{run['id']}",
+        headers=headers,
+    ).json()
+    assert completed["status"] == "completed"
+
+
 def test_invalid_result_status_is_rejected(client: TestClient) -> None:
     headers, suite_id = create_run_context(client)
     run = start_run(client, headers, suite_id)

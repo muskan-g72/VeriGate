@@ -8,7 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.audit_log import AuditLog
     from app.models.issue import Issue
+    from app.models.project_member import ProjectMember
     from app.models.test_suite import TestSuite
     from app.models.user import User
 
@@ -53,4 +55,11 @@ class Project(Base):
     issues: Mapped[list["Issue"]] = relationship(
         back_populates="project",
         cascade="all, delete-orphan",
+    )
+    members: Mapped[list["ProjectMember"]] = relationship(
+        back_populates="project",
+        cascade="all, delete-orphan",
+    )
+    audit_logs: Mapped[list["AuditLog"]] = relationship(
+        back_populates="project",
     )

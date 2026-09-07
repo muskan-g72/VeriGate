@@ -8,8 +8,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.audit_log import AuditLog
     from app.models.issue import Issue
     from app.models.project import Project
+    from app.models.project_member import ProjectMember
+    from app.models.team_member import TeamMember
     from app.models.verification_run import VerificationRun
 
 
@@ -40,6 +43,12 @@ class User(Base):
         server_default="true",
         nullable=False,
     )
+    system_role: Mapped[str] = mapped_column(
+        String(20),
+        default="user",
+        server_default="user",
+        nullable=False,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -60,4 +69,18 @@ class User(Base):
     )
     reported_issues: Mapped[list["Issue"]] = relationship(
         back_populates="reported_by",
+        foreign_keys="Issue.reported_by_id",
+    )
+    assigned_issues: Mapped[list["Issue"]] = relationship(
+        back_populates="assigned_to",
+        foreign_keys="Issue.assigned_to_id",
+    )
+    project_memberships: Mapped[list["ProjectMember"]] = relationship(
+        back_populates="user",
+    )
+    team_memberships: Mapped[list["TeamMember"]] = relationship(
+        back_populates="user",
+    )
+    audit_logs: Mapped[list["AuditLog"]] = relationship(
+        back_populates="user",
     )

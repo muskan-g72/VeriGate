@@ -5,7 +5,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 RunStatus = Literal["pending", "in_progress", "completed"]
-ResultStatus = Literal["pending", "passed", "failed", "blocked", "skipped"]
+ResultStatus = Literal["pending", "running", "passed", "failed", "blocked", "skipped"]
+FINAL_RESULT_STATUSES = frozenset({"passed", "failed", "blocked", "skipped"})
 
 
 class VerificationRunCreate(BaseModel):
@@ -16,6 +17,9 @@ class VerificationResultUpdate(BaseModel):
     status: ResultStatus
     actual_result: str | None = None
     notes: str | None = None
+    failure_message: str | None = None
+    stack_trace: str | None = None
+    duration: float | None = Field(default=None, ge=0)
 
 
 class VerificationResultRead(BaseModel):
@@ -25,6 +29,9 @@ class VerificationResultRead(BaseModel):
     status: ResultStatus
     actual_result: str | None
     notes: str | None
+    failure_message: str | None
+    stack_trace: str | None
+    duration: float | None
     executed_at: datetime | None
     created_at: datetime
 

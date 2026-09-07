@@ -7,11 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser
 from app.api.routes.test_suites import get_owned_test_suite
+from app.core.permissions import MANAGE_TEST_ASSET_ROLES, VIEW_PROJECT_ROLES
 from app.db.session import get_db
-from app.models.project import Project
 from app.models.test_case import TestCase
-from app.models.test_suite import TestSuite
 from app.schemas.test_case import TestCaseCreate, TestCaseRead, TestCaseUpdate
+from app.services.audit_service import record_audit_event
 
 router = APIRouter()
 
@@ -20,21 +20,20 @@ def get_owned_test_case(
     test_case_id: uuid.UUID,
     owner_id: uuid.UUID,
     database_session: Session,
+    allowed_roles: tuple[str, ...] | None = None,
 ) -> TestCase:
-    test_case = database_session.scalar(
-        select(TestCase)
-        .join(TestSuite)
-        .join(Project)
-        .where(
-            TestCase.id == test_case_id,
-            Project.owner_id == owner_id,
-        )
-    )
+    test_case = database_session.get(TestCase, test_case_id)
     if test_case is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Test case not found",
         )
+    get_owned_test_suite(
+        test_case.test_suite_id,
+        owner_id,
+        database_session,
+        allowed_roles or VIEW_PROJECT_ROLES,
+    )
     return test_case
 
 
@@ -53,12 +52,23 @@ def create_test_case(
         test_suite_id,
         current_user.id,
         database_session,
+        MANAGE_TEST_ASSET_ROLES,
     )
     test_case = TestCase(
         test_suite_id=test_suite.id,
         **test_case_data.model_dump(),
     )
     database_session.add(test_case)
+    database_session.flush()
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=test_suite.project_id,
+        action="created",
+        resource_type="test_case",
+        resource_id=test_case.id,
+        description=f"Created test case '{test_case.title}'",
+    )
     database_session.commit()
     database_session.refresh(test_case)
     return test_case
@@ -103,10 +113,30 @@ def update_test_case(
     current_user: CurrentUser,
     database_session: Annotated[Session, Depends(get_db)],
 ) -> TestCase:
-    test_case = get_owned_test_case(test_case_id, current_user.id, database_session)
+    test_case = get_owned_test_case(
+        test_case_id,
+        current_user.id,
+        database_session,
+        MANAGE_TEST_ASSET_ROLES,
+    )
     for field, value in test_case_data.model_dump(exclude_unset=True).items():
         setattr(test_case, field, value)
 
+    test_suite = get_owned_test_suite(
+        test_case.test_suite_id,
+        current_user.id,
+        database_session,
+        MANAGE_TEST_ASSET_ROLES,
+    )
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=test_suite.project_id,
+        action="updated",
+        resource_type="test_case",
+        resource_id=test_case.id,
+        description=f"Updated test case '{test_case.title}'",
+    )
     database_session.commit()
     database_session.refresh(test_case)
     return test_case
@@ -121,7 +151,27 @@ def delete_test_case(
     current_user: CurrentUser,
     database_session: Annotated[Session, Depends(get_db)],
 ) -> Response:
-    test_case = get_owned_test_case(test_case_id, current_user.id, database_session)
+    test_case = get_owned_test_case(
+        test_case_id,
+        current_user.id,
+        database_session,
+        MANAGE_TEST_ASSET_ROLES,
+    )
+    test_suite = get_owned_test_suite(
+        test_case.test_suite_id,
+        current_user.id,
+        database_session,
+        MANAGE_TEST_ASSET_ROLES,
+    )
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=test_suite.project_id,
+        action="deleted",
+        resource_type="test_case",
+        resource_id=test_case.id,
+        description=f"Deleted test case '{test_case.title}'",
+    )
     database_session.delete(test_case)
     database_session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
