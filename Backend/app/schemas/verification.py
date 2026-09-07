@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.evidence import EvidenceResponse
+
 RunStatus = Literal["pending", "in_progress", "completed"]
 ResultStatus = Literal["pending", "running", "passed", "failed", "blocked", "skipped"]
 FINAL_RESULT_STATUSES = frozenset({"passed", "failed", "blocked", "skipped"})
@@ -34,6 +36,7 @@ class VerificationResultRead(BaseModel):
     duration: float | None
     executed_at: datetime | None
     created_at: datetime
+    evidence_items: list[EvidenceResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

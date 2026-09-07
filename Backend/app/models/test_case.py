@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -39,6 +39,16 @@ class TestCase(Base):
         default=True,
         server_default="true",
         nullable=False,
+    )
+    execution_mode: Mapped[str] = mapped_column(
+        String(20),
+        default="manual",
+        server_default="manual",
+        nullable=False,
+    )
+    automation_steps: Mapped[list[dict[str, Any]] | None] = mapped_column(
+        JSON,
+        nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

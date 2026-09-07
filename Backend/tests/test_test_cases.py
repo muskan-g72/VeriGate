@@ -57,6 +57,8 @@ def test_create_test_case(client: TestClient) -> None:
     assert test_case["test_suite_id"] == suite_id
     assert test_case["priority"] == "high"
     assert test_case["is_active"] is True
+    assert test_case["execution_mode"] == "manual"
+    assert test_case["automation_steps"] is None
 
 
 def test_list_test_cases(client: TestClient) -> None:
@@ -187,3 +189,110 @@ def test_cannot_delete_another_users_test_case(client: TestClient) -> None:
     )
 
     assert response.status_code == 404
+
+
+AUTOMATION_STEPS = [
+    {"action": "goto", "value": "https://example.com"},
+    {"action": "expect_title", "value": "Example Domain"},
+]
+
+
+def test_create_automated_test_case_with_automation_steps(
+    client: TestClient,
+) -> None:
+    headers, suite_id = build_test_suite(client, "auto.case@example.com")
+    response = client.post(
+        f"/api/v1/test-suites/{suite_id}/test-cases",
+        headers=headers,
+        json={
+            "title": "Example homepage title",
+            "steps": "Open example.com and check the title.",
+            "expected_result": "The title is Example Domain.",
+            "execution_mode": "automated",
+            "automation_steps": AUTOMATION_STEPS,
+        },
+    )
+
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["execution_mode"] == "automated"
+    assert payload["automation_steps"] == AUTOMATION_STEPS
+
+
+def test_automated_test_case_requires_automation_steps(
+    client: TestClient,
+) -> None:
+    headers, suite_id = build_test_suite(client, "auto.missing.steps@example.com")
+    response = client.post(
+        f"/api/v1/test-suites/{suite_id}/test-cases",
+        headers=headers,
+        json={
+            "title": "Missing automation steps",
+            "steps": "Attempt automated creation.",
+            "expected_result": "Request is rejected.",
+            "execution_mode": "automated",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_rejects_invalid_automation_step_structure(client: TestClient) -> None:
+    headers, suite_id = build_test_suite(client, "auto.invalid.steps@example.com")
+    response = client.post(
+        f"/api/v1/test-suites/{suite_id}/test-cases",
+        headers=headers,
+        json={
+            "title": "Invalid automation steps",
+            "steps": "Attempt automated creation.",
+            "expected_result": "Request is rejected.",
+            "execution_mode": "automated",
+            "automation_steps": [{"action": "goto"}],
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_automation_steps(client: TestClient) -> None:
+    headers, suite_id = build_test_suite(client, "auto.update@example.com")
+    created = client.post(
+        f"/api/v1/test-suites/{suite_id}/test-cases",
+        headers=headers,
+        json={
+            "title": "Automated title check",
+            "steps": "Open example.com and check the title.",
+            "expected_result": "The title is Example Domain.",
+            "execution_mode": "automated",
+            "automation_steps": AUTOMATION_STEPS,
+        },
+    )
+    assert created.status_code == 201
+    updated_steps = [
+        {"action": "goto", "value": "https://example.com"},
+        {"action": "expect_text", "value": "Example Domain"},
+    ]
+
+    response = client.patch(
+        f"/api/v1/test-cases/{created.json()['id']}",
+        headers=headers,
+        json={"automation_steps": updated_steps},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["automation_steps"] == updated_steps
+    assert response.json()["execution_mode"] == "automated"
+
+
+def test_cannot_switch_to_automated_without_steps(client: TestClient) -> None:
+    headers, suite_id = build_test_suite(client, "auto.switch@example.com")
+    test_case = create_test_case(client, headers, suite_id)
+
+    response = client.patch(
+        f"/api/v1/test-cases/{test_case['id']}",
+        headers=headers,
+        json={"execution_mode": "automated"},
+    )
+
+    assert response.status_code == 422
+

@@ -2,6 +2,7 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,7 +11,12 @@ from app.api.routes.test_suites import get_owned_test_suite
 from app.core.permissions import MANAGE_TEST_ASSET_ROLES, VIEW_PROJECT_ROLES
 from app.db.session import get_db
 from app.models.test_case import TestCase
-from app.schemas.test_case import TestCaseCreate, TestCaseRead, TestCaseUpdate
+from app.schemas.test_case import (
+    TestCaseCreate,
+    TestCaseRead,
+    TestCaseUpdate,
+    validate_test_case_automation,
+)
 from app.services.audit_service import record_audit_event
 
 router = APIRouter()
@@ -54,9 +60,14 @@ def create_test_case(
         database_session,
         MANAGE_TEST_ASSET_ROLES,
     )
+    test_case_payload = test_case_data.model_dump()
+    test_case_payload["automation_steps"] = validate_test_case_automation(
+        test_case_payload["execution_mode"],
+        test_case_payload.get("automation_steps"),
+    )
     test_case = TestCase(
         test_suite_id=test_suite.id,
-        **test_case_data.model_dump(),
+        **test_case_payload,
     )
     database_session.add(test_case)
     database_session.flush()
@@ -119,7 +130,25 @@ def update_test_case(
         database_session,
         MANAGE_TEST_ASSET_ROLES,
     )
-    for field, value in test_case_data.model_dump(exclude_unset=True).items():
+    updates = test_case_data.model_dump(exclude_unset=True)
+    execution_mode = updates.get("execution_mode", test_case.execution_mode)
+    automation_steps = updates.get(
+        "automation_steps",
+        test_case.automation_steps,
+    )
+    try:
+        normalized_steps = validate_test_case_automation(
+            execution_mode,
+            automation_steps,
+        )
+    except (ValueError, ValidationError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    if "automation_steps" in updates:
+        updates["automation_steps"] = normalized_steps
+    for field, value in updates.items():
         setattr(test_case, field, value)
 
     test_suite = get_owned_test_suite(
