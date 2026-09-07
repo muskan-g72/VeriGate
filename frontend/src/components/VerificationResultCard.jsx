@@ -1,32 +1,23 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { CreateEvidenceDialog } from './CreateEvidenceDialog'
 import { CreateIssueDialog } from './CreateIssueDialog'
+import { evidenceApi } from '../api/client'
 import { canCreateIssue } from '../issues'
-import { useState } from 'react'
 import { VerificationStatusBadge } from './VerificationRuns'
 import { formatRunDate, verificationLabels } from '../verification'
 
 export function VerificationResultCard({ result, testCase, disabled, saving, onSave }) {
-  const [creatingIssue, setCreatingIssue] = useState(false)
-  const [createdIssue, setCreatedIssue] = useState(null)
-  const [actualResult, setActualResult] = useState(result.actual_result || '')
-  const [notes, setNotes] = useState(result.notes || '')
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  async function save(status) {
-    setError(''); setNotice('')
-    try { await onSave(result.id, { status, actual_result: actualResult || null, notes: notes || null }); setNotice('Result saved.') }
-    catch (error) { setError(error.message) }
-  }
+  const [creatingIssue, setCreatingIssue] = useState(false); const [creatingEvidence, setCreatingEvidence] = useState(false); const [createdIssue, setCreatedIssue] = useState(null); const [actualResult, setActualResult] = useState(result.actual_result || ''); const [notes, setNotes] = useState(result.notes || ''); const [error, setError] = useState(''); const [notice, setNotice] = useState(''); const [evidence, setEvidence] = useState([]); const [evidenceError, setEvidenceError] = useState(''); const [evidenceLoading, setEvidenceLoading] = useState(true)
+  useEffect(() => { let active = true; evidenceApi.list(result.id).then((items) => { if (active) setEvidence(items) }).catch((requestError) => { if (active) setEvidenceError(requestError.message) }).finally(() => { if (active) setEvidenceLoading(false) }); return () => { active = false } }, [result.id])
+  async function save(status) { setError(''); setNotice(''); try { await onSave(result.id, { status, actual_result: actualResult || null, notes: notes || null }); setNotice('Result saved.') } catch (requestError) { setError(requestError.message) } }
+  async function removeEvidence(item) { if (!window.confirm(`Remove evidence "${item.name}"?`)) return; try { await evidenceApi.remove(item.id); setEvidence((current) => current.filter((entry) => entry.id !== item.id)) } catch (requestError) { setError(requestError.message) } }
   return <article id={`result-${result.id}`} className="verification-result" aria-labelledby={`title-${result.id}`} aria-busy={saving}>
     <header><div><span className={`priority priority--${testCase?.priority}`}>{testCase?.priority || 'Test case'}</span><h3 id={`title-${result.id}`}>{testCase?.title || `Test case ${result.test_case_id}`}</h3></div><VerificationStatusBadge status={result.status} /></header>
     {testCase ? <><p className="verification-copy">{testCase.description}</p><div className="verification-definition"><div><h4>Execution steps</h4><p>{testCase.steps}</p></div><div><h4>Expected result</h4><p>{testCase.expected_result}</p></div></div></> : <p>Test definition is unavailable.</p>}
     <div className="verification-definition"><div className="field"><label htmlFor={`actual-${result.id}`}>Actual result <span>Optional</span></label><textarea id={`actual-${result.id}`} rows={3} value={actualResult} disabled={saving} onChange={(event) => setActualResult(event.target.value)} /></div><div className="field"><label htmlFor={`notes-${result.id}`}>Notes <span>Optional</span></label><textarea id={`notes-${result.id}`} rows={3} value={notes} disabled={saving} onChange={(event) => setNotes(event.target.value)} /></div></div>
-    <p>Enter observations before choosing a result, or edit them later and save details.</p>
-    <div className="verification-actions" aria-label="Set test result">{['passed', 'failed', 'blocked', 'skipped', 'pending'].map((status) => <button type="button" className="secondary-button" aria-pressed={result.status === status} disabled={disabled} key={status} onClick={() => save(status)}>{status === 'pending' ? 'Reset to Pending' : verificationLabels[status]}</button>)}<button className="primary-button" disabled={disabled} onClick={() => save(result.status)}>Save details</button></div>
-    <p role="status">{saving ? 'Saving result...' : notice}{result.executed_at && ` Executed: ${formatRunDate(result.executed_at)}`}</p>
-    {canCreateIssue(result.status) && <button className="secondary-button" disabled={disabled} onClick={() => setCreatingIssue(true)}>Create Issue</button>}
-    {createdIssue && <p role="status">Issue created. <Link to={`/app/issues/${createdIssue.id}`} state={{ runId: result.verification_run_id, resultId: result.id }}>Open issue</Link> or <Link to={`/app/issues?projectId=${createdIssue.project_id}`}>view project issues</Link>.</p>}
-    {creatingIssue && <CreateIssueDialog result={result} testCase={testCase} onClose={() => setCreatingIssue(false)} onCreated={(issue) => { setCreatedIssue(issue); setCreatingIssue(false) }} />}
-    {error && <div className="form-alert" role="alert">{error}</div>}
+    <p>Enter observations before choosing a result, or edit them later and save details.</p><div className="verification-actions" aria-label="Set test result">{['passed', 'failed', 'blocked', 'skipped', 'pending'].map((status) => <button type="button" className="secondary-button" aria-pressed={result.status === status} disabled={disabled} key={status} onClick={() => save(status)}>{status === 'pending' ? 'Reset to Pending' : verificationLabels[status]}</button>)}<button className="primary-button" disabled={disabled} onClick={() => save(result.status)}>Save details</button></div>
+    <p role="status">{saving ? 'Saving result...' : notice}{result.executed_at && ` Executed: ${formatRunDate(result.executed_at)}`}</p>{canCreateIssue(result.status) && <button className="secondary-button" disabled={disabled} onClick={() => setCreatingIssue(true)}>Create Issue</button>}{createdIssue && <p role="status">Issue created. <Link to={`/app/issues/${createdIssue.id}`} state={{ runId: result.verification_run_id, resultId: result.id }}>Open issue</Link> or <Link to={`/app/issues?projectId=${createdIssue.project_id}`}>view project issues</Link>.</p>}{creatingIssue && <CreateIssueDialog result={result} testCase={testCase} onClose={() => setCreatingIssue(false)} onCreated={(issue) => { setCreatedIssue(issue); setCreatingIssue(false) }} />}
+    <section className="result-evidence" aria-label="Evidence"><div className="result-evidence__heading"><h4>Evidence</h4><button type="button" className="secondary-button" disabled={disabled} onClick={() => setCreatingEvidence(true)}>Attach evidence</button></div>{evidenceLoading ? <p>Loading evidence...</p> : evidenceError ? <p className="evidence-error">Evidence could not be loaded: {evidenceError}</p> : evidence.length ? <ul>{evidence.map((item) => <li key={item.id}><strong>{item.name}</strong><span>{item.type}{item.description ? ` · ${item.description}` : ''}</span>{item.content && <pre>{item.content}</pre>}{!disabled && <button className="list-action" onClick={() => removeEvidence(item)}>Remove</button>}</li>)}</ul> : <p>No evidence has been attached to this result.</p>}</section>{creatingEvidence && <CreateEvidenceDialog resultId={result.id} onClose={() => setCreatingEvidence(false)} onCreated={(item) => { setEvidence((current) => [item, ...current]); setCreatingEvidence(false) }} />}{error && <div className="form-alert" role="alert">{error}</div>}
   </article>
 }

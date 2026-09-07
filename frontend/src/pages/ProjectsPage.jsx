@@ -1,5 +1,6 @@
 ﻿import { ArrowRight, Boxes, CalendarDays, LoaderCircle, Pencil, Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { projectsApi } from '../api/client'
 
 const emptyForm = { name: '', description: '' }
@@ -84,7 +85,7 @@ export function ProjectsPage() {
     {status === 'error' && <div className="projects-state projects-state--error"><p>{error}</p><button onClick={retryLoad}>Try again</button></div>}
     {status === 'ready' && projects.length === 0 && <section className="projects-empty"><div><Boxes /></div><p className="eyebrow">No records yet</p><h3>Create your first project</h3><p>Start with a name and description. You can refine the project as your verification scope grows.</p><button onClick={() => setEditing(null)}><Plus />Create project</button></section>}
     {status === 'ready' && projects.length > 0 && <section className="project-grid" aria-label="Projects">{projects.map((project) => <article className="project-card" key={project.id}>
-      <div className="project-card__icon"><Boxes /></div><div className="project-card__content"><p className="eyebrow">Project</p><h3>{project.name}</h3><p>{project.description || 'No description provided.'}</p></div><footer><span><CalendarDays />Updated {formatDate(project.updated_at)}</span><button onClick={() => setEditing(project)} aria-label={`Edit ${project.name}`}><Pencil />Edit</button></footer>
+      <div className="project-card__icon"><Boxes /></div><div className="project-card__content"><p className="eyebrow">Project</p><h3>{project.name}</h3><p>{project.description || 'No description provided.'}</p></div><footer><span><CalendarDays />Updated {formatDate(project.updated_at)}</span><div><Link className="secondary-button" to={`/app/projects/${project.id}`}>Summary</Link><button onClick={() => setEditing(project)} aria-label={`Edit ${project.name}`}><Pencil />Edit</button></div></footer>
     </article>)}</section>}
     {editing !== undefined && <ProjectDialog project={editing} onClose={() => setEditing(undefined)} onSaved={saveProject} />}
   </main>
