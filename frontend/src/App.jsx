@@ -1,3 +1,6 @@
+import { IssuesPage } from './pages/IssuesPage'
+import { RunsPage } from './pages/RunsPage'
+import { IssueDetailPage } from './pages/IssueDetailPage'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { useAuth } from './auth/useAuth'
@@ -11,6 +14,7 @@ import { OverviewPage } from './pages/OverviewPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { VerificationRunPage } from './pages/VerificationRunPage'
 import { TestLibraryPage } from './pages/TestLibraryPage'
 import { TestCasesPage } from './pages/TestCasesPage'
 import { TestSuitesPage } from './pages/TestSuitesPage'
@@ -38,7 +42,11 @@ export default function App() {
     <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
     <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
       <Route index element={<OverviewPage />} />
+      <Route path="runs" element={<RunsPage />} />
+      <Route path="issues" element={<IssuesPage />} />
+      <Route path="issues/:issueId" element={<IssueDetailPage />} />
       <Route path="projects" element={<ProjectsPage />} />
+      <Route path="verification-runs/:runId" element={<VerificationRunPage />} />
       <Route path="test-library" element={<TestLibraryPage />} />
       <Route path="test-suites" element={<TestSuitesPage />} />
       <Route path="test-cases" element={<TestCasesPage />} />

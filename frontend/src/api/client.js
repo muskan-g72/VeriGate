@@ -55,6 +55,7 @@ export const projectsApi = {
 }
 
 export const testSuitesApi = {
+  read: (suiteId) => request(`/api/v1/test-suites/${suiteId}`),
   list: (projectId) => request(`/api/v1/projects/${projectId}/test-suites`),
   create: (projectId, data) => request(`/api/v1/projects/${projectId}/test-suites`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
@@ -63,6 +64,17 @@ export const testSuitesApi = {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
   }),
   remove: (suiteId) => request(`/api/v1/test-suites/${suiteId}`, { method: 'DELETE' }),
+}
+
+export const verificationRunsApi = {
+  list: (suiteId) => request(`/api/v1/test-suites/${suiteId}/verification-runs`),
+  create: (suiteId, data) => request(`/api/v1/test-suites/${suiteId}/verification-runs`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  read: (runId) => request(`/api/v1/verification-runs/${runId}`),
+  updateResult: (resultId, data) => request(`/api/v1/verification-results/${resultId}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
 }
 
 export const testCasesApi = {
@@ -74,4 +86,15 @@ export const testCasesApi = {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
   }),
   remove: (caseId) => request(`/api/v1/test-cases/${caseId}`, { method: 'DELETE' }),
+}
+
+export const issuesApi = {
+  createFromResult: (resultId, data) => request(`/api/v1/verification-results/${resultId}/issues`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  listForProject: (projectId) => request(`/api/v1/projects/${projectId}/issues`),
+  read: (issueId) => request(`/api/v1/issues/${issueId}`),
+  update: (issueId, data) => request(`/api/v1/issues/${issueId}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
 }
