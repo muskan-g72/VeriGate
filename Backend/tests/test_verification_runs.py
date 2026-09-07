@@ -201,3 +201,40 @@ def test_other_user_cannot_read_run_or_update_result(client: TestClient) -> None
 
     assert read_response.status_code == 404
     assert update_response.status_code == 404
+
+
+def test_run_reopens_with_details_and_resets_from_completed(client: TestClient) -> None:
+    headers, suite_id = create_run_context(client)
+    run = start_run(client, headers, suite_id)
+    first, second = run['results']
+    for result, result_status in [(first, 'blocked'), (second, 'skipped')]:
+        response = client.patch(
+            f"/api/v1/verification-results/{result['id']}",
+            headers=headers,
+            json={'status': result_status, 'actual_result': 'Service unavailable', 'notes': 'Retry later'},
+        )
+        assert response.status_code == 200
+
+    detail_url = f"/api/v1/verification-runs/{run['id']}"
+    reopened = client.get(detail_url, headers=headers).json()
+    assert reopened['status'] == 'completed'
+    assert reopened['blocked_count'] == reopened['skipped_count'] == 1
+    assert all(item['actual_result'] == 'Service unavailable' and item['notes'] == 'Retry later' for item in reopened['results'])
+    history = client.get(f'/api/v1/test-suites/{suite_id}/verification-runs', headers=headers).json()
+    assert history[0]['id'] == run['id']
+    assert history[0]['status'] == 'completed'
+
+    for index, result in enumerate([first, second]):
+        saved = client.patch(
+            f"/api/v1/verification-results/{result['id']}",
+            headers=headers,
+            json={'status': 'pending', 'actual_result': None, 'notes': None},
+        ).json()
+        assert saved['executed_at'] is None
+        assert saved['actual_result'] is None
+        assert saved['notes'] is None
+        current = client.get(detail_url, headers=headers).json()
+        assert current['status'] == ('in_progress' if index == 0 else 'pending')
+        assert current['completed_at'] is None
+    assert current['started_at'] is None
+    assert current['pending_count'] == 2

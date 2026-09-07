@@ -11,6 +11,7 @@ import { OverviewPage } from './pages/OverviewPage'
 import { ProjectsPage } from './pages/ProjectsPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { VerificationRunPage } from './pages/VerificationRunPage'
 import { TestLibraryPage } from './pages/TestLibraryPage'
 import { TestCasesPage } from './pages/TestCasesPage'
 import { TestSuitesPage } from './pages/TestSuitesPage'
@@ -39,6 +40,7 @@ export default function App() {
     <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
       <Route index element={<OverviewPage />} />
       <Route path="projects" element={<ProjectsPage />} />
+      <Route path="verification-runs/:runId" element={<VerificationRunPage />} />
       <Route path="test-library" element={<TestLibraryPage />} />
       <Route path="test-suites" element={<TestSuitesPage />} />
       <Route path="test-cases" element={<TestCasesPage />} />

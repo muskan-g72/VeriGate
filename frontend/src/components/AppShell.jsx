@@ -19,7 +19,7 @@ export function AppShell() {
   const { user, logout } = useAuth()
   const location = useLocation()
   const pageTitles = { '/app/projects': 'Projects', '/app/test-library': 'Test Library', '/app/test-suites': 'Test Suites', '/app/test-cases': 'Test Cases' }
-  const pageTitle = pageTitles[location.pathname] || 'Overview'
+  const pageTitle = pageTitles[location.pathname] || (location.pathname.startsWith('/app/verification-runs/') ? 'Verification Run' : 'Overview')
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [paletteOpen, setPaletteOpen] = useState(false)
