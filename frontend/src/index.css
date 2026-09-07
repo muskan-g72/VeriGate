@@ -367,6 +367,16 @@ body:not(.has-landing) .gate-mark__left,body:not(.has-landing) .gate-mark__node-
 @media(prefers-reduced-motion:reduce){.app-main::after{animation:none}.nav-item{transition:none}}
 .is-collapsed .app-main::before{left:72px}
 
+/* Sidebar scrollbar colors for both axes; preserve existing scroll sizing. */
+.sidebar nav { scrollbar-color: #51435f #100d15; }
+.sidebar nav:hover { scrollbar-color: #75618a #100d15; }
+.sidebar nav::-webkit-scrollbar { background: #100d15; }
+.sidebar nav::-webkit-scrollbar-track,
+.sidebar nav::-webkit-scrollbar-corner,
+.sidebar nav::-webkit-scrollbar-button { background: #100d15; }
+.sidebar nav::-webkit-scrollbar-thumb { background: #51435f; border-radius: 8px; }
+.sidebar nav::-webkit-scrollbar-thumb:hover { background: #75618a; }
+
 .projects-empty button,.case-empty button{border-color:rgba(216,70,239,.55);border-radius:999px;background:linear-gradient(105deg,#7c3aed,#c026d3 62%,#db2777);color:#fff;box-shadow:0 10px 26px rgba(126,34,206,.22),inset 0 1px rgba(255,255,255,.16);transition:transform var(--fast),filter var(--fast),box-shadow var(--fast)}.projects-empty button:hover,.case-empty button:hover{border-color:#e879f9;background:linear-gradient(105deg,#8b5cf6,#d946ef 62%,#ec4899);color:#fff;filter:brightness(1.1);transform:translateY(-2px);box-shadow:0 14px 32px rgba(192,38,211,.3)}
 
 /* Overview reveal, consistent CTAs and illuminated wave nodes */
