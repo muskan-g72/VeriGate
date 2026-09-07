@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-
+from app.api.routes.dashboard import router as dashboard_router
+from app.api.routes.evidence import router as evidence_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.audit_logs import router as audit_logs_router
 from app.api.routes.auth import router as auth_router
@@ -69,8 +70,15 @@ api_router.include_router(
     audit_logs_router,
     tags=["Audit Logs"],
 )
-
+api_router.include_router(
+    dashboard_router,
+    tags=["Dashboard"],
+)
 api_router.include_router(
     admin_router,
     tags=["Admin"],
+)
+api_router.include_router(
+    evidence_router,
+    tags=["Evidence"],
 )
