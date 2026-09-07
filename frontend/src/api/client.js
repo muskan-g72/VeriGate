@@ -66,6 +66,18 @@ export const testSuitesApi = {
   remove: (suiteId) => request(`/api/v1/test-suites/${suiteId}`, { method: 'DELETE' }),
 }
 
+export const dashboardApi = {
+  summary: () => request('/api/v1/dashboard/summary'),
+  projectSummary: (projectId) => request(`/api/v1/projects/${projectId}/summary`),
+}
+
+export const projectMembersApi = {
+  list: (projectId) => request(`/api/v1/projects/${projectId}/members`),
+  create: (projectId, data) => request(`/api/v1/projects/${projectId}/members`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  update: (projectId, userId, data) => request(`/api/v1/projects/${projectId}/members/${userId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  remove: (projectId, userId) => request(`/api/v1/projects/${projectId}/members/${userId}`, { method: 'DELETE' }),
+}
+
 export const verificationRunsApi = {
   list: (suiteId) => request(`/api/v1/test-suites/${suiteId}/verification-runs`),
   create: (suiteId, data) => request(`/api/v1/test-suites/${suiteId}/verification-runs`, {
@@ -97,4 +109,39 @@ export const issuesApi = {
   update: (issueId, data) => request(`/api/v1/issues/${issueId}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
   }),
+}
+
+export const evidenceApi = {
+  list: (resultId) => request(`/api/v1/verification-results/${resultId}/evidence`),
+  create: (resultId, data) => request(`/api/v1/verification-results/${resultId}/evidence`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  remove: (evidenceId) => request(`/api/v1/evidence/${evidenceId}`, { method: 'DELETE' }),
+  read: (evidenceId) => request(`/api/v1/evidence/${evidenceId}`),
+}
+
+export const reportsApi = {
+  project: (projectId) => request(`/api/v1/projects/${projectId}/reports`),
+  trend: (projectId) => request(`/api/v1/projects/${projectId}/reports/verification-trend`),
+  issues: (projectId) => request(`/api/v1/projects/${projectId}/reports/issues`),
+}
+
+export const teamsApi = {
+  list: () => request('/api/v1/teams'),
+  create: (data) => request('/api/v1/teams', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  members: (teamId) => request(`/api/v1/teams/${teamId}/members`),
+  update: (teamId, data) => request(`/api/v1/teams/${teamId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  remove: (teamId) => request(`/api/v1/teams/${teamId}`, { method: 'DELETE' }),
+  addMember: (teamId, data) => request(`/api/v1/teams/${teamId}/members`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  removeMember: (teamId, userId) => request(`/api/v1/teams/${teamId}/members/${userId}`, { method: 'DELETE' }),
+}
+
+export const auditLogsApi = { list: (filters = {}) => request(`/api/v1/audit-logs?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()}`), read: (logId) => request(`/api/v1/audit-logs/${logId}`) }
+
+export const adminApi = {
+  statistics: () => request('/api/v1/admin/statistics'),
+  users: () => request('/api/v1/admin/users'),
+  teams: () => request('/api/v1/admin/teams'),
+  projects: () => request('/api/v1/admin/projects'),
+  runs: (filters = {}) => request(`/api/v1/admin/verification-runs?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()}`),
+  issues: (filters = {}) => request(`/api/v1/admin/issues?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()}`),
+  auditLogs: (filters = {}) => request(`/api/v1/admin/audit-logs?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()}`),
 }

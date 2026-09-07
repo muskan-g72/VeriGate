@@ -18,6 +18,10 @@ import { VerificationRunPage } from './pages/VerificationRunPage'
 import { TestLibraryPage } from './pages/TestLibraryPage'
 import { TestCasesPage } from './pages/TestCasesPage'
 import { TestSuitesPage } from './pages/TestSuitesPage'
+import { EvidencePage } from './pages/EvidencePage'
+import { InsightsPage } from './pages/InsightsPage'
+import { AccessPage } from './pages/AccessPage'
+import { ProjectSummaryPage } from './pages/ProjectSummaryPage'
 
 function ProtectedRoute({ children }) {
   const { status } = useAuth()
@@ -46,10 +50,14 @@ export default function App() {
       <Route path="issues" element={<IssuesPage />} />
       <Route path="issues/:issueId" element={<IssueDetailPage />} />
       <Route path="projects" element={<ProjectsPage />} />
+      <Route path="projects/:projectId" element={<ProjectSummaryPage />} />
       <Route path="verification-runs/:runId" element={<VerificationRunPage />} />
       <Route path="test-library" element={<TestLibraryPage />} />
       <Route path="test-suites" element={<TestSuitesPage />} />
       <Route path="test-cases" element={<TestCasesPage />} />
+      <Route path="evidence" element={<EvidencePage />} />
+      <Route path="insights" element={<InsightsPage />} />
+      <Route path="access" element={<AccessPage />} />
     </Route>
     <Route path="*" element={<NotFoundPage />} />
   </Routes></AuthProvider>

@@ -63,10 +63,10 @@ def build_project_report(database_session: Session, project_id: uuid.UUID) -> di
 
     issue_stats = database_session.execute(
         select(
-            func.sum(func.case((Issue.status == "open", 1), else_=0)),
-            func.sum(func.case((Issue.status == "in_progress", 1), else_=0)),
-            func.sum(func.case((Issue.status == "resolved", 1), else_=0)),
-            func.sum(func.case((Issue.status == "closed", 1), else_=0)),
+            func.sum(case((Issue.status == "open", 1), else_=0)),
+            func.sum(case((Issue.status == "in_progress", 1), else_=0)),
+            func.sum(case((Issue.status == "resolved", 1), else_=0)),
+            func.sum(case((Issue.status == "closed", 1), else_=0)),
         ).where(Issue.project_id == project_id)
     ).one()
 
@@ -136,10 +136,10 @@ def build_issue_report(database_session: Session, project_id: uuid.UUID) -> dict
     status_rows = database_session.execute(
         select(
             func.count(Issue.id),
-            func.sum(func.case((Issue.status == "open", 1), else_=0)),
-            func.sum(func.case((Issue.status == "in_progress", 1), else_=0)),
-            func.sum(func.case((Issue.status == "resolved", 1), else_=0)),
-            func.sum(func.case((Issue.status == "closed", 1), else_=0)),
+            func.sum(case((Issue.status == "open", 1), else_=0)),
+            func.sum(case((Issue.status == "in_progress", 1), else_=0)),
+            func.sum(case((Issue.status == "resolved", 1), else_=0)),
+            func.sum(case((Issue.status == "closed", 1), else_=0)),
         ).where(Issue.project_id == project_id)
     ).one()
     total = int(status_rows[0] or 0)
