@@ -7,10 +7,12 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser
 from app.api.routes.projects import get_owned_project
+from app.core.permissions import MANAGE_TEST_ASSET_ROLES, VIEW_PROJECT_ROLES
 from app.db.session import get_db
-from app.models.project import Project
 from app.models.test_suite import TestSuite
+from app.models.user import User
 from app.schemas.test_suite import TestSuiteCreate, TestSuiteRead, TestSuiteUpdate
+from app.services.audit_service import record_audit_event
 
 router = APIRouter()
 
@@ -19,20 +21,26 @@ def get_owned_test_suite(
     test_suite_id: uuid.UUID,
     owner_id: uuid.UUID,
     database_session: Session,
+    allowed_roles: tuple[str, ...] | None = None,
 ) -> TestSuite:
-    test_suite = database_session.scalar(
-        select(TestSuite)
-        .join(Project)
-        .where(
-            TestSuite.id == test_suite_id,
-            Project.owner_id == owner_id,
-        )
-    )
+    test_suite = database_session.get(TestSuite, test_suite_id)
     if test_suite is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Test suite not found",
         )
+    user = database_session.get(User, owner_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Test suite not found",
+        )
+    get_owned_project(
+        test_suite.project_id,
+        owner_id,
+        database_session,
+        allowed_roles or VIEW_PROJECT_ROLES,
+    )
     return test_suite
 
 
@@ -47,13 +55,28 @@ def create_test_suite(
     current_user: CurrentUser,
     database_session: Annotated[Session, Depends(get_db)],
 ) -> TestSuite:
-    project = get_owned_project(project_id, current_user.id, database_session)
+    project = get_owned_project(
+        project_id,
+        current_user.id,
+        database_session,
+        MANAGE_TEST_ASSET_ROLES,
+    )
     test_suite = TestSuite(
         project_id=project.id,
         name=test_suite_data.name,
         description=test_suite_data.description,
     )
     database_session.add(test_suite)
+    database_session.flush()
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=project.id,
+        action="created",
+        resource_type="test_suite",
+        resource_id=test_suite.id,
+        description=f"Created test suite '{test_suite.name}'",
+    )
     database_session.commit()
     database_session.refresh(test_suite)
     return test_suite
@@ -98,10 +121,20 @@ def update_test_suite(
         test_suite_id,
         current_user.id,
         database_session,
+        MANAGE_TEST_ASSET_ROLES,
     )
     for field, value in test_suite_data.model_dump(exclude_unset=True).items():
         setattr(test_suite, field, value)
 
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=test_suite.project_id,
+        action="updated",
+        resource_type="test_suite",
+        resource_id=test_suite.id,
+        description=f"Updated test suite '{test_suite.name}'",
+    )
     database_session.commit()
     database_session.refresh(test_suite)
     return test_suite
@@ -116,7 +149,21 @@ def delete_test_suite(
     current_user: CurrentUser,
     database_session: Annotated[Session, Depends(get_db)],
 ) -> Response:
-    test_suite = get_owned_test_suite(test_suite_id, current_user.id, database_session)
+    test_suite = get_owned_test_suite(
+        test_suite_id,
+        current_user.id,
+        database_session,
+        MANAGE_TEST_ASSET_ROLES,
+    )
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=test_suite.project_id,
+        action="deleted",
+        resource_type="test_suite",
+        resource_id=test_suite.id,
+        description=f"Deleted test suite '{test_suite.name}'",
+    )
     database_session.delete(test_suite)
     database_session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

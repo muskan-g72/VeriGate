@@ -84,7 +84,10 @@ def test_create_issue_from_failed_result(client: TestClient) -> None:
 
     assert issue["project_id"] == project_id
     assert issue["verification_result_id"] == result_id
+    assert issue["test_case_id"] is not None
+    assert issue["verification_run_id"] is not None
     assert issue["severity"] == "critical"
+    assert issue["priority"] == "medium"
     assert issue["status"] == "open"
 
     suites = client.get(f"/api/v1/projects/{project_id}/test-suites", headers=headers).json()

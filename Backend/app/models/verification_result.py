@@ -2,12 +2,13 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
+from sqlalchemy import DateTime, Float, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.evidence import Evidence
     from app.models.issue import Issue
     from app.models.test_case import TestCase
     from app.models.verification_run import VerificationRun
@@ -42,6 +43,9 @@ class VerificationResult(Base):
     )
     actual_result: Mapped[str | None] = mapped_column(Text, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    failure_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    stack_trace: Mapped[str | None] = mapped_column(Text, nullable=True)
+    duration: Mapped[float | None] = mapped_column(Float, nullable=True)
     executed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
@@ -60,4 +64,9 @@ class VerificationResult(Base):
     )
     issues: Mapped[list["Issue"]] = relationship(
         back_populates="verification_result",
+    )
+    evidence_items: Mapped[list["Evidence"]] = relationship(
+        back_populates="verification_result",
+        cascade="all, delete-orphan",
+        order_by="Evidence.created_at",
     )
