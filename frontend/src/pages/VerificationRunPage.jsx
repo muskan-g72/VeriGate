@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { projectsApi, testCasesApi, testSuitesApi, verificationRunsApi } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { formatRunDate } from '../verification'
@@ -13,6 +13,7 @@ export function VerificationRunPage() {
 
 function VerificationRun({ runId }) {
   const { logout } = useAuth()
+  const { state } = useLocation()
   const [run, setRun] = useState(null)
   const [suite, setSuite] = useState(null)
   const [project, setProject] = useState(null)
@@ -72,7 +73,7 @@ function VerificationRun({ runId }) {
     } finally { busy.current = false; if (mounted.current) setSavingId(null) }
   }
   const back = suite ? `/app/test-library?projectId=${suite.project_id}&suiteId=${suite.id}` : '/app/test-library'
-  return <main className="library-page verification-page"><Link className="library-link-button" to={back}>Back to Test Library</Link>
+  return <main className="library-page verification-page"><div className="verification-back-links"><Link className="library-link-button" to={back}>Back to Test Library</Link><Link className="secondary-button" to={`/app/runs${typeof state?.runsSearch === 'string' && state.runsSearch ? `?${state.runsSearch}` : ''}`}>Back to Runs</Link></div>
     {error ? <div className="projects-state projects-state--error" role="alert"><p>{error}</p><button onClick={() => { setError(''); setAttempt((value) => value + 1) }}>Retry</button></div> : !run ? <div className="projects-state" role="status">Loading verification run...</div> : <>
       <section className="verification-summary"><p className="eyebrow">{project?.name} / {suite?.name}</p><div className="verification-title"><h2>{run.name}</h2><VerificationStatusBadge status={run.status} /></div>
         <div className="verification-dates"><span>Created: {formatRunDate(run.created_at)}</span>{run.started_at && <span>Started: {formatRunDate(run.started_at)}</span>}{run.completed_at && <span>Completed: {formatRunDate(run.completed_at)}</span>}</div>

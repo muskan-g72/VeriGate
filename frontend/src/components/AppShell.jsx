@@ -6,7 +6,7 @@ import { Brand } from './Brand'
 import { CommandPalette } from './CommandPalette'
 
 const groups = [
-  ['Command', [[Gauge, 'Overview', '/app'], [Boxes, 'Projects', '/app/projects'], [Play, 'Runs']]],
+  ['Command', [[Gauge, 'Overview', '/app'], [Boxes, 'Projects', '/app/projects'], [Play, 'Runs', '/app/runs']]],
   ['Testing', [[BookOpen, 'Test Library', '/app/test-library'], [Layers3, 'Test Suites', '/app/test-suites'], [TestTube2, 'Test Cases', '/app/test-cases']]],
   ['Quality', [[Bug, 'Issues', '/app/issues'], [FlaskConical, 'Evidence']]],
   ['Infrastructure', [[Server, 'Environments'], [MonitorCog, 'Applications']]],
@@ -18,7 +18,7 @@ const initials = (user) => (user?.full_name || user?.email || 'VG').split(/[\s@.
 export function AppShell() {
   const { user, logout } = useAuth()
   const location = useLocation()
-  const pageTitles = { '/app/projects': 'Projects', '/app/test-library': 'Test Library', '/app/test-suites': 'Test Suites', '/app/test-cases': 'Test Cases' }
+  const pageTitles = { '/app/runs': 'Runs', '/app/projects': 'Projects', '/app/test-library': 'Test Library', '/app/test-suites': 'Test Suites', '/app/test-cases': 'Test Cases' }
   const pageTitle = pageTitles[location.pathname] || (location.pathname.startsWith('/app/issues') ? 'Issues' : location.pathname.startsWith('/app/verification-runs/') ? 'Verification Run' : 'Overview')
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
