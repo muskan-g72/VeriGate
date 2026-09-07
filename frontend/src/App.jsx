@@ -1,3 +1,5 @@
+import { IssuesPage } from './pages/IssuesPage'
+import { IssueDetailPage } from './pages/IssueDetailPage'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { useAuth } from './auth/useAuth'
@@ -39,6 +41,8 @@ export default function App() {
     <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
     <Route path="/app" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
       <Route index element={<OverviewPage />} />
+      <Route path="issues" element={<IssuesPage />} />
+      <Route path="issues/:issueId" element={<IssueDetailPage />} />
       <Route path="projects" element={<ProjectsPage />} />
       <Route path="verification-runs/:runId" element={<VerificationRunPage />} />
       <Route path="test-library" element={<TestLibraryPage />} />

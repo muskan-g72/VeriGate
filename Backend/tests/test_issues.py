@@ -87,6 +87,12 @@ def test_create_issue_from_failed_result(client: TestClient) -> None:
     assert issue["severity"] == "critical"
     assert issue["status"] == "open"
 
+    suites = client.get(f"/api/v1/projects/{project_id}/test-suites", headers=headers).json()
+    runs = client.get(f"/api/v1/test-suites/{suites[0]['id']}/verification-runs", headers=headers).json()
+    result = client.get(f"/api/v1/verification-runs/{runs[0]['id']}", headers=headers).json()['results'][0]
+    assert result['status'] == 'failed'
+    assert result['actual_result'] == 'Unexpected failure.'
+
 
 def test_cannot_create_issue_from_pending_result(client: TestClient) -> None:
     headers, _, result_id = prepare_result(client)
@@ -144,3 +150,55 @@ def test_other_user_cannot_access_issue(client: TestClient) -> None:
     response = client.get(f"/api/v1/issues/{issue['id']}", headers=other_headers)
 
     assert response.status_code == 404
+
+
+def test_create_issue_from_blocked_result_preserves_verification(client: TestClient) -> None:
+    headers, project_id, result_id = prepare_result(client)
+    result = client.patch(f'/api/v1/verification-results/{result_id}', headers=headers,
+                          json={'status': 'blocked', 'notes': 'Service unavailable'}).json()
+    issue = create_issue(client, headers, result_id)
+    assert issue['project_id'] == project_id
+    run = client.get(f"/api/v1/verification-runs/{result['verification_run_id']}", headers=headers).json()
+    assert run['results'][0]['status'] == 'blocked'
+    assert run['results'][0]['notes'] == 'Service unavailable'
+
+
+def test_passed_and_skipped_results_reject_issues(client: TestClient) -> None:
+    headers, _, result_id = prepare_result(client)
+    for status in ['passed', 'skipped']:
+        assert client.patch(f'/api/v1/verification-results/{result_id}', headers=headers,
+                            json={'status': status}).status_code == 200
+        response = client.post(f'/api/v1/verification-results/{result_id}/issues', headers=headers,
+                               json={'title': 'Invalid issue'})
+        assert response.status_code == 400
+        assert response.json()['detail'] == 'Issues can only be created from failed or blocked results'
+
+
+def test_issue_edits_and_resolution_persist_on_read_and_list(client: TestClient) -> None:
+    headers, project_id, result_id = prepare_result(client)
+    fail_result(client, headers, result_id)
+    issue = create_issue(client, headers, result_id)
+    url = f"/api/v1/issues/{issue['id']}"
+    for status in ['in_progress', 'resolved', 'closed', 'open', 'closed', 'in_progress']:
+        saved = client.patch(url, headers=headers, json={
+            'title': 'Updated finding', 'description': 'Investigated login failure',
+            'severity': 'high', 'status': status,
+        })
+        assert saved.status_code == 200
+        data = saved.json()
+        assert (data['resolved_at'] is not None) == (status in ['resolved', 'closed'])
+        assert client.get(url, headers=headers).json() == data
+        listed = client.get(f'/api/v1/projects/{project_id}/issues', headers=headers).json()
+        assert listed == [data]
+        assert data['severity'] == 'high'
+        assert data['title'] == 'Updated finding'
+
+
+def test_issue_project_list_and_update_are_owner_protected(client: TestClient) -> None:
+    headers, project_id, result_id = prepare_result(client)
+    fail_result(client, headers, result_id)
+    issue = create_issue(client, headers, result_id)
+    other, _, _ = prepare_result(client, 'other.issue@example.com')
+    assert client.get(f'/api/v1/projects/{project_id}/issues', headers=other).status_code == 404
+    assert client.patch(f"/api/v1/issues/{issue['id']}", headers=other,
+                        json={'status': 'closed'}).status_code == 404

@@ -87,3 +87,14 @@ export const testCasesApi = {
   }),
   remove: (caseId) => request(`/api/v1/test-cases/${caseId}`, { method: 'DELETE' }),
 }
+
+export const issuesApi = {
+  createFromResult: (resultId, data) => request(`/api/v1/verification-results/${resultId}/issues`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  listForProject: (projectId) => request(`/api/v1/projects/${projectId}/issues`),
+  read: (issueId) => request(`/api/v1/issues/${issueId}`),
+  update: (issueId, data) => request(`/api/v1/issues/${issueId}`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+}
