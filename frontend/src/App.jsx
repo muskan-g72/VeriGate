@@ -21,6 +21,7 @@ import { TestSuitesPage } from './pages/TestSuitesPage'
 import { EvidencePage } from './pages/EvidencePage'
 import { InsightsPage } from './pages/InsightsPage'
 import { AccessPage } from './pages/AccessPage'
+import { PlaywrightTestsPage } from './pages/PlaywrightTestsPage'
 import { ProjectSummaryPage } from './pages/ProjectSummaryPage'
 
 function ProtectedRoute({ children }) {
@@ -55,6 +56,7 @@ export default function App() {
       <Route path="test-library" element={<TestLibraryPage />} />
       <Route path="test-suites" element={<TestSuitesPage />} />
       <Route path="test-cases" element={<TestCasesPage />} />
+      <Route path="playwright-tests" element={<PlaywrightTestsPage />} />
       <Route path="evidence" element={<EvidencePage />} />
       <Route path="insights" element={<InsightsPage />} />
       <Route path="access" element={<AccessPage />} />

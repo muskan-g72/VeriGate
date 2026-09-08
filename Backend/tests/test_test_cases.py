@@ -296,3 +296,18 @@ def test_cannot_switch_to_automated_without_steps(client: TestClient) -> None:
 
     assert response.status_code == 422
 
+
+def test_rejects_invalid_execution_mode(client: TestClient) -> None:
+    headers, suite_id = build_test_suite(client, "invalid.mode@example.com")
+    response = client.post(
+        f"/api/v1/test-suites/{suite_id}/test-cases",
+        headers=headers,
+        json={
+            "title": "Invalid mode case",
+            "steps": "Steps to perform.",
+            "expected_result": "Result expected.",
+            "execution_mode": "unsupported_mode",
+        },
+    )
+
+    assert response.status_code == 422
