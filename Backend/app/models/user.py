@@ -10,6 +10,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.audit_log import AuditLog
     from app.models.issue import Issue
+    from app.models.password_reset_token import PasswordResetToken
     from app.models.project import Project
     from app.models.project_member import ProjectMember
     from app.models.team_member import TeamMember
@@ -84,3 +85,8 @@ class User(Base):
     audit_logs: Mapped[list["AuditLog"]] = relationship(
         back_populates="user",
     )
+    password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+

@@ -12,6 +12,14 @@ class Settings(BaseSettings):
     database_url: str
     auth_secret_key: str
     access_token_expire_minutes: int = 30
+    password_reset_token_expire_minutes: int = 20
+    frontend_url: str = "http://localhost:5173"
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    smtp_use_tls: bool = True
+    emails_from: str = "noreply@verigate.com"
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIRECTORY / ".env",

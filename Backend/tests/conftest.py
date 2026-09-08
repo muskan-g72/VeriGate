@@ -9,7 +9,7 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.models import Evidence, User  # noqa: F401
+from app.models import Evidence, PasswordResetToken, User  # noqa: F401
 
 test_engine = create_engine(
     "sqlite+pysqlite://",
@@ -24,6 +24,15 @@ TestSessionLocal = sessionmaker(
 
 
 def override_get_db() -> Generator[Session, None, None]:
+    database_session = TestSessionLocal()
+    try:
+        yield database_session
+    finally:
+        database_session.close()
+
+
+@pytest.fixture
+def db_session() -> Generator[Session, None, None]:
     database_session = TestSessionLocal()
     try:
         yield database_session

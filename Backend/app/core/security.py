@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -38,3 +40,12 @@ def decode_access_token(token: str) -> str:
     if not isinstance(subject, str):
         raise jwt.InvalidTokenError("Token subject is missing")
     return subject
+
+
+def generate_password_reset_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+

@@ -1,4 +1,9 @@
-from app.schemas.auth import Token
+from app.schemas.auth import (
+    ForgotPasswordRequest,
+    MessageResponse,
+    ResetPasswordRequest,
+    Token,
+)
 from app.schemas.issue import IssueCreate, IssueRead, IssueUpdate
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectUpdate
 from app.schemas.test_case import TestCaseCreate, TestCaseRead, TestCaseUpdate
@@ -13,12 +18,15 @@ from app.schemas.verification import (
 )
 
 __all__ = [
+    "ForgotPasswordRequest",
+    "MessageResponse",
     "ProjectCreate",
     "IssueCreate",
     "IssueRead",
     "IssueUpdate",
     "ProjectRead",
     "ProjectUpdate",
+    "ResetPasswordRequest",
     "TestSuiteCreate",
     "TestSuiteRead",
     "TestSuiteUpdate",

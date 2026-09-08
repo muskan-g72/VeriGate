@@ -1,6 +1,7 @@
 from app.models.audit_log import AuditLog
 from app.models.evidence import Evidence
 from app.models.issue import Issue
+from app.models.password_reset_token import PasswordResetToken
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.team import Team
@@ -14,6 +15,7 @@ from app.models.verification_run import VerificationRun
 __all__ = [
     "AuditLog",
     "Evidence",
+    "PasswordResetToken",
     "Project",
     "ProjectMember",
     "Issue",
@@ -25,3 +27,4 @@ __all__ = [
     "VerificationResult",
     "VerificationRun",
 ]
+
