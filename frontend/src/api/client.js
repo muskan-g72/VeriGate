@@ -31,6 +31,31 @@ async function request(path, options = {}) {
   }
 }
 
+async function downloadBlob(path) {
+  const headers = new Headers()
+  const token = sessionStore.get()
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+    if (!response.ok) {
+      const payload = typeof response.json === 'function' ? await response.json().catch(() => null) : null
+      const detail = typeof payload?.detail === 'string' ? payload.detail : 'Failed to download file.'
+      throw new ApiError(detail, response.status, response.status === 401 ? 'unauthorized' : 'request_failed')
+    }
+    const blob = await response.blob()
+    const disposition = response.headers.get('Content-Disposition')
+    let filename = 'verigate-proof-of-verification.pdf'
+    if (disposition && disposition.includes('filename=')) {
+      const match = disposition.match(/filename="?([^"]+)"?/)
+      if (match && match[1]) filename = match[1]
+    }
+    return { blob, filename }
+  } catch (error) {
+    if (error instanceof ApiError) throw error
+    throw new ApiError('VeriGate API is unavailable. Check the server and try again.', 0, 'unavailable')
+  }
+}
+
 export const authApi = {
   register: (data) => request('/api/v1/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
   login: (email, password) => request('/api/v1/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ username: email, password }) }),
@@ -128,6 +153,8 @@ export const reportsApi = {
   project: (projectId) => request(`/api/v1/projects/${projectId}/reports`),
   trend: (projectId) => request(`/api/v1/projects/${projectId}/reports/verification-trend`),
   issues: (projectId) => request(`/api/v1/projects/${projectId}/reports/issues`),
+  verificationReport: (verificationRunId, format = 'json') => request(`/api/v1/verification-runs/${verificationRunId}/report?format=${encodeURIComponent(format)}`),
+  downloadVerificationReport: (verificationRunId) => downloadBlob(`/api/v1/verification-runs/${verificationRunId}/report?format=pdf`),
 }
 
 export const teamsApi = {

@@ -2,9 +2,20 @@ import asyncio
 import sys
 
 if sys.platform == "win32":
-    asyncio.set_event_loop_policy(
-        asyncio.WindowsProactorEventLoopPolicy()
-    )
+    import warnings
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        try:
+            policy = asyncio.get_event_loop_policy()
+            if not isinstance(
+                policy, getattr(asyncio, "WindowsProactorEventLoopPolicy", ())
+            ):
+                asyncio.set_event_loop_policy(
+                    asyncio.WindowsProactorEventLoopPolicy()
+                )
+        except Exception:
+            pass
 
 from fastapi import FastAPI
 
