@@ -16,6 +16,11 @@ from app.db.session import get_db
 from app.models.test_case import TestCase
 from app.models.verification_result import VerificationResult
 from app.models.verification_run import VerificationRun
+from app.schemas.failure_analysis import (
+    FailureAnalysis,
+    VerificationRunAnalysisRequest,
+    VerificationRunAnalysisResponse,
+)
 from app.schemas.verification import (
     FINAL_RESULT_STATUSES,
     VerificationResultRead,
@@ -28,6 +33,10 @@ from app.services.audit_service import record_audit_event
 from app.services.automated_verification import (
     execute_automated_results,
     sync_verification_run_status,
+)
+from app.services.failure_analysis_service import (
+    analyze_failed_result,
+    analyze_verification_run,
 )
 
 router = APIRouter()
@@ -47,6 +56,9 @@ def get_owned_verification_run(
             selectinload(VerificationRun.test_suite),
             selectinload(VerificationRun.results).selectinload(
                 VerificationResult.evidence_items
+            ),
+            selectinload(VerificationRun.results).selectinload(
+                VerificationResult.test_case
             ),
         )
         .where(VerificationRun.id == verification_run_id)
@@ -345,3 +357,62 @@ def update_verification_result(
     database_session.refresh(verification_result)
 
     return verification_result
+
+
+@router.post(
+    "/verification-runs/{verification_run_id}/analyze",
+    response_model=VerificationRunAnalysisResponse,
+)
+async def analyze_verification_run_endpoint(
+    verification_run_id: uuid.UUID,
+    current_user: CurrentUser,
+    database_session: DatabaseSession,
+    request_data: VerificationRunAnalysisRequest | None = None,
+) -> VerificationRunAnalysisResponse:
+    verification_run = get_owned_verification_run(
+        verification_run_id=verification_run_id,
+        owner_id=current_user.id,
+        database_session=database_session,
+        allowed_roles=VIEW_PROJECT_ROLES,
+    )
+
+    target_result_id = request_data.result_id if request_data else None
+    analysis_response = await analyze_verification_run(
+        verification_run,
+        target_result_id=target_result_id,
+    )
+
+    safe_record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        action="analyzed",
+        resource_type="verification_run",
+        resource_id=verification_run.id,
+        project_id=verification_run.test_suite.project_id,
+        description=f"AI failure analysis run for '{verification_run.name}'",
+    )
+
+    return analysis_response
+
+
+@router.post(
+    "/verification-results/{verification_result_id}/analyze",
+    response_model=FailureAnalysis,
+)
+async def analyze_verification_result_endpoint(
+    verification_result_id: uuid.UUID,
+    current_user: CurrentUser,
+    database_session: DatabaseSession,
+) -> FailureAnalysis:
+    verification_result = get_owned_verification_result(
+        verification_result_id=verification_result_id,
+        owner_id=current_user.id,
+        database_session=database_session,
+        allowed_roles=VIEW_PROJECT_ROLES,
+    )
+
+    analysis = await analyze_failed_result(
+        verification_result,
+        verification_result.test_case,
+    )
+    return analysis

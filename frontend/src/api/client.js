@@ -87,6 +87,12 @@ export const verificationRunsApi = {
   updateResult: (resultId, data) => request(`/api/v1/verification-results/${resultId}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
   }),
+  analyze: (runId, data = {}) => request(`/api/v1/verification-runs/${runId}/analyze`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+  }),
+  analyzeResult: (resultId) => request(`/api/v1/verification-results/${resultId}/analyze`, {
+    method: 'POST',
+  }),
 }
 
 export const testCasesApi = {
