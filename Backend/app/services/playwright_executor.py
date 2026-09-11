@@ -1,4 +1,6 @@
+import asyncio
 import base64
+import sys
 import time
 import traceback
 from typing import Any
@@ -6,7 +8,7 @@ from typing import Any
 from playwright.async_api import async_playwright
 
 
-async def execute_playwright_test(
+async def _execute_playwright_steps(
     steps: list[dict[str, Any]],
 ) -> dict[str, Any]:
     started_at = time.perf_counter()
@@ -44,6 +46,11 @@ async def execute_playwright_test(
                     action = step.get("action")
                     selector = step.get("selector")
                     value = step.get("value")
+                    if value is None:
+                        if action == "goto":
+                            value = step.get("url")
+                        elif action in {"expect_title", "expect_text"}:
+                            value = step.get("text")
 
                     if not action:
                         raise ValueError(
@@ -61,6 +68,7 @@ async def execute_playwright_test(
                             str(value),
                             wait_until="networkidle",
                         )
+                        result["actual_result"] = f"Navigated to {value}"
 
                     elif action == "click":
                         if not selector:
@@ -70,6 +78,7 @@ async def execute_playwright_test(
                             )
 
                         await page.locator(selector).click()
+                        result["actual_result"] = f"Clicked {selector}"
 
                     elif action == "fill":
                         if not selector:
@@ -87,6 +96,7 @@ async def execute_playwright_test(
                         await page.locator(selector).fill(
                             str(value)
                         )
+                        result["actual_result"] = f"Filled {selector}"
 
                     elif action == "expect_text":
                         if value is None:
@@ -95,9 +105,22 @@ async def execute_playwright_test(
                                 "'expect_text' requires 'value'"
                             )
 
-                        await page.get_by_text(
-                            str(value)
-                        ).wait_for()
+                        if selector:
+                            await page.locator(selector).wait_for()
+                            text_content = await page.locator(
+                                selector
+                            ).text_content()
+                            if str(value) not in (text_content or ""):
+                                raise AssertionError(
+                                    f"Expected text '{value}' in selector '{selector}', "
+                                    f"but got '{text_content}'"
+                                )
+                        else:
+                            await page.get_by_text(
+                                str(value)
+                            ).wait_for()
+
+                        result["actual_result"] = f"Found text '{value}'"
 
                     elif action == "expect_title":
                         if value is None:
@@ -107,6 +130,7 @@ async def execute_playwright_test(
                             )
 
                         actual_title = await page.title()
+                        result["actual_result"] = f"Page title is '{actual_title}'"
 
                         if actual_title != str(value):
                             raise AssertionError(
@@ -121,7 +145,8 @@ async def execute_playwright_test(
 
             except Exception as exc:
                 result["status"] = "failed"
-                result["actual_result"] = "Test failed"
+                if result["actual_result"] == "Test passed":
+                    result["actual_result"] = "Test failed"
                 result["failure_message"] = (
                     str(exc)
                     or exc.__class__.__name__
@@ -174,3 +199,29 @@ async def execute_playwright_test(
                 pass
 
     return result
+
+
+def _run_in_proactor_thread(
+    steps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    loop = asyncio.ProactorEventLoop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(_execute_playwright_steps(steps))
+    finally:
+        try:
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        except Exception:
+            pass
+        loop.close()
+
+
+async def execute_playwright_test(
+    steps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    loop = asyncio.get_running_loop()
+    if sys.platform == "win32" and not isinstance(
+        loop, getattr(asyncio, "ProactorEventLoop", ())
+    ):
+        return await loop.run_in_executor(None, _run_in_proactor_thread, steps)
+    return await _execute_playwright_steps(steps)
