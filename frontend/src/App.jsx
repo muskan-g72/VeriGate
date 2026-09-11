@@ -23,6 +23,7 @@ import { InsightsPage } from './pages/InsightsPage'
 import { AccessPage } from './pages/AccessPage'
 import { PlaywrightTestsPage } from './pages/PlaywrightTestsPage'
 import { ProjectSummaryPage } from './pages/ProjectSummaryPage'
+import { GitHubPrsPage } from './pages/GitHubPrsPage'
 
 function ProtectedRoute({ children }) {
   const { status } = useAuth()
@@ -57,6 +58,7 @@ export default function App() {
       <Route path="test-suites" element={<TestSuitesPage />} />
       <Route path="test-cases" element={<TestCasesPage />} />
       <Route path="playwright-tests" element={<PlaywrightTestsPage />} />
+      <Route path="github-prs" element={<GitHubPrsPage />} />
       <Route path="evidence" element={<EvidencePage />} />
       <Route path="insights" element={<InsightsPage />} />
       <Route path="access" element={<AccessPage />} />

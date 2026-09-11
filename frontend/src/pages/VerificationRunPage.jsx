@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { FileText, LoaderCircle } from 'lucide-react'
+import { ExternalLink, FileText, GitBranch, GitCommit, GitPullRequest, LoaderCircle } from 'lucide-react'
 import { projectsApi, reportsApi, testCasesApi, testSuitesApi, verificationRunsApi } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { formatRunDate } from '../verification'
@@ -111,6 +111,30 @@ function VerificationRun({ runId }) {
     {error ? <div className="projects-state projects-state--error" role="alert"><p>{error}</p><button onClick={() => { setError(''); setAttempt((value) => value + 1) }}>Retry</button></div> : !run ? <div className="projects-state" role="status">Loading verification run...</div> : <>
       <section className="verification-summary"><div className="verification-back-links"><Link className="library-link-button" to={back}>Back to Test Library</Link><Link className="secondary-button" to={`/app/runs${typeof state?.runsSearch === 'string' && state.runsSearch ? `?${state.runsSearch}` : ''}`}>Back to Runs</Link><button type="button" className="secondary-button report-download-btn" disabled={generatingReport} onClick={handleDownloadReport} title="Generate and download official Proof of Verification PDF report">{generatingReport ? <LoaderCircle size={15} className="spin" /> : <FileText size={15} />}<span>{generatingReport ? 'Generating Report...' : 'Proof of Verification Report'}</span></button></div><p className="eyebrow">{project?.name} / {suite?.name}</p><div className="verification-title"><h2>{run.name}</h2><VerificationStatusBadge status={run.status} /></div>
         <div className="verification-dates"><span>Created: {formatRunDate(run.created_at)}</span>{run.started_at && <span>Started: {formatRunDate(run.started_at)}</span>}{run.completed_at && <span>Completed: {formatRunDate(run.completed_at)}</span>}</div>
+        {run.trigger_source === 'github_pr' && (
+          <div className="github-pr-banner">
+            <div className="pr-banner-left">
+              <GitPullRequest size={18} className="pr-banner-icon" />
+              <div>
+                <div className="pr-banner-title">
+                  <strong>GitHub PR #{run.pr_number}: {run.pr_title}</strong>
+                  {run.pr_url && (
+                    <a href={run.pr_url} target="_blank" rel="noopener noreferrer" className="pr-github-link">
+                      <span>View PR on GitHub</span>
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
+                </div>
+                <div className="pr-banner-meta">
+                  <span><GitBranch size={13} /> <code>{run.pr_source_branch}</code> &rarr; <code>{run.pr_target_branch}</code></span>
+                  {run.pr_commit_sha && <span><GitCommit size={13} /> <code>{run.pr_commit_sha.slice(0, 7)}</code></span>}
+                  {run.pr_author && <span>by @{run.pr_author}</span>}
+                  {run.pr_repository && <span>in <code>{run.pr_repository}</code></span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
         <p aria-live="polite">{run.total_cases - run.pending_count} / {run.total_cases} completed</p><progress aria-label="Executed test cases" value={run.total_cases - run.pending_count} max={run.total_cases || 1} />
         <p>{run.passed_count} passed · {run.failed_count} failed · {run.blocked_count} blocked · {run.skipped_count} skipped · {run.pending_count} pending</p>
         {reportNotice && <div className="form-success" role="status" style={{ marginTop: '0.75rem' }}>{reportNotice}</div>}

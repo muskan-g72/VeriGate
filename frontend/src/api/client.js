@@ -178,3 +178,14 @@ export const adminApi = {
   issues: (filters = {}) => request(`/api/v1/admin/issues?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()}`),
   auditLogs: (filters = {}) => request(`/api/v1/admin/audit-logs?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()}`),
 }
+
+export const githubApi = {
+  getProjectConfig: (projectId) => request(`/api/v1/projects/${projectId}/github`),
+  updateProjectConfig: (projectId, data) => request(`/api/v1/projects/${projectId}/github`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  }),
+  listProjectPrs: (projectId) => request(`/api/v1/projects/${projectId}/github/prs`),
+  listPrVerifications: (projectId = null) => request(`/api/v1/github/pr-verifications${projectId ? `?project_id=${projectId}` : ''}`),
+}

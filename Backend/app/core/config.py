@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     password_reset_token_expire_minutes: int = 20
     frontend_url: str = "http://localhost:5173"
+    backend_url: str = "http://localhost:8000"
+    webhook_base_url: str | None = None
     smtp_host: str | None = None
     smtp_port: int = 587
     smtp_username: str | None = None
@@ -24,6 +26,9 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-1.5-flash"
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
+    github_webhook_secret: str | None = None
+    github_token: str | None = None
+    github_api_url: str = "https://api.github.com"
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIRECTORY / ".env",

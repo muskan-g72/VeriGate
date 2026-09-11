@@ -4,6 +4,7 @@ from app.api.routes.evidence import router as evidence_router
 from app.api.routes.admin import router as admin_router
 from app.api.routes.audit_logs import router as audit_logs_router
 from app.api.routes.auth import router as auth_router
+from app.api.routes.github import router as github_router
 from app.api.routes.health import router as health_router
 from app.api.routes.issues import router as issues_router
 from app.api.routes.members import router as members_router
@@ -81,4 +82,8 @@ api_router.include_router(
 api_router.include_router(
     evidence_router,
     tags=["Evidence"],
+)
+api_router.include_router(
+    github_router,
+    tags=["GitHub"],
 )

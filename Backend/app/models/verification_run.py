@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -33,6 +33,51 @@ class VerificationRun(Base):
         default="pending",
         server_default="pending",
         nullable=False,
+    )
+    trigger_source: Mapped[str] = mapped_column(
+        String(30),
+        default="manual",
+        server_default="manual",
+        nullable=False,
+    )
+    pr_number: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+    pr_title: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    pr_source_branch: Mapped[str | None] = mapped_column(
+        String(120),
+        nullable=True,
+    )
+    pr_target_branch: Mapped[str | None] = mapped_column(
+        String(120),
+        nullable=True,
+    )
+    pr_commit_sha: Mapped[str | None] = mapped_column(
+        String(40),
+        nullable=True,
+        index=True,
+    )
+    pr_repository: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+    pr_author: Mapped[str | None] = mapped_column(
+        String(120),
+        nullable=True,
+    )
+    pr_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(200),
+        unique=True,
+        index=True,
+        nullable=True,
     )
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),

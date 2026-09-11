@@ -47,6 +47,15 @@ class VerificationRunRead(BaseModel):
     created_by_id: uuid.UUID
     name: str
     status: RunStatus
+    trigger_source: str = "manual"
+    pr_number: int | None = None
+    pr_title: str | None = None
+    pr_source_branch: str | None = None
+    pr_target_branch: str | None = None
+    pr_commit_sha: str | None = None
+    pr_repository: str | None = None
+    pr_author: str | None = None
+    pr_url: str | None = None
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime

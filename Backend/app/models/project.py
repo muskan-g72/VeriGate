@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -33,6 +33,25 @@ class Project(Base):
     )
     description: Mapped[str | None] = mapped_column(
         Text,
+        nullable=True,
+    )
+    github_repo: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True,
+    )
+    github_default_branch: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        default="main",
+    )
+    github_verification_enabled: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+        nullable=False,
+    )
+    github_webhook_secret: Mapped[str | None] = mapped_column(
+        String(255),
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
