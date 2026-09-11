@@ -67,7 +67,7 @@ export const testSuitesApi = {
 }
 
 export const dashboardApi = {
-  summary: () => request('/api/v1/dashboard/summary'),
+  summary: (projectId = null) => request(`/api/v1/dashboard/summary${projectId ? `?project_id=${projectId}` : ''}`),
   projectSummary: (projectId) => request(`/api/v1/projects/${projectId}/summary`),
 }
 
