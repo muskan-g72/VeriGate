@@ -41,7 +41,12 @@ def test_verify_github_signature_unit():
     assert verify_github_signature(payload, "sha256=invalid", secret) is False
     assert verify_github_signature(payload, None, secret) is False
     assert verify_github_signature(payload, "not-sha256-prefixed", secret) is False
-    assert verify_github_signature(payload, valid_sig, "") is False
+    assert verify_github_signature(payload, valid_sig, "wrong-secret") is False
+
+    from app.core.config import settings
+    if settings.github_webhook_secret:
+        env_sig = sign_payload(payload, settings.github_webhook_secret)
+        assert verify_github_signature(payload, env_sig) is True
 
 
 def test_post_github_commit_status_graceful_handling():
@@ -255,7 +260,12 @@ def test_github_webhook_pr_opened_and_idempotency(client: TestClient):
     assert data2["duplicate"] is True
     assert data2["verification_run_id"] == run_id
 
-    # 3. Verify PR run listed in project PRs endpoint
+    # 3. Verify PR run listed in project PRs endpoint and pr-verifications with project_id
+    pr_verifs = client.get(f"/api/v1/github/pr-verifications?project_id={project_id}", headers=headers)
+    assert pr_verifs.status_code == 200
+    assert len(pr_verifs.json()) == 1
+    assert pr_verifs.json()[0]["id"] == run_id
+
     proj_prs = client.get(f"/api/v1/projects/{project_id}/github/prs", headers=headers)
     assert proj_prs.status_code == 200
     prs_list = proj_prs.json()
@@ -281,6 +291,41 @@ def test_github_webhook_pr_opened_and_idempotency(client: TestClient):
     assert run_obj["pr_number"] == 99
     assert run_obj["pr_author"] == "contributor1"
     assert run_obj["pr_repository"] == repo_name
+
+    # 6. Test synchronize action updates existing PR verification record
+    sync_payload = {
+        "action": "synchronize",
+        "repository": {"full_name": repo_name},
+        "pull_request": {
+            "number": 99,
+            "title": "Add Awesome Feature (Updated)",
+            "html_url": f"https://github.com/{repo_name}/pull/99",
+            "head": {"sha": "c0ffee56789a", "ref": "feature/awesome"},
+            "base": {"ref": "main"},
+            "user": {"login": "contributor1"},
+        },
+    }
+    sync_bytes = json.dumps(sync_payload).encode("utf-8")
+    sync_sig = sign_payload(sync_bytes, secret)
+
+    sync_resp = client.post(
+        "/api/v1/github/webhook",
+        headers={
+            "X-GitHub-Event": "pull_request",
+            "X-Hub-Signature-256": sync_sig,
+            "Content-Type": "application/json",
+        },
+        content=sync_bytes,
+    )
+    assert sync_resp.status_code == 202
+    assert sync_resp.json()["verification_run_id"] == run_id
+
+    # Verify updated record
+    pr_verifs2 = client.get(f"/api/v1/github/pr-verifications?project_id={project_id}", headers=headers)
+    assert pr_verifs2.status_code == 200
+    assert len(pr_verifs2.json()) == 1
+    assert pr_verifs2.json()[0]["pr_commit_sha"] == "c0ffee56789a"
+    assert "Updated" in pr_verifs2.json()[0]["pr_title"]
 
 
 def test_run_github_pr_verification_service():

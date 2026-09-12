@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import settings
 from app.db.session import SessionLocal
@@ -109,7 +109,7 @@ async def run_github_pr_verification(
                     result.test_case,
                 )
                 try:
-                    analyze_failed_result(result, test_case)
+                    await analyze_failed_result(result, test_case)
                 except Exception as exc:
                     logger.warning(
                         f"AI failure analysis skipped for result {result.id}: {exc}"

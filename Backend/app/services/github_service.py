@@ -18,9 +18,15 @@ def verify_github_signature(
     """
     Validate GitHub webhook payload using HMAC-SHA256 signature.
     Timing-attack safe via hmac.compare_digest.
+    Supports candidate secrets from project record and global settings.github_webhook_secret.
     """
-    webhook_secret = secret or settings.github_webhook_secret
-    if not webhook_secret:
+    candidate_secrets: list[str] = []
+    if secret:
+        candidate_secrets.append(secret)
+    if settings.github_webhook_secret and settings.github_webhook_secret not in candidate_secrets:
+        candidate_secrets.append(settings.github_webhook_secret)
+
+    if not candidate_secrets:
         if not signature_header:
             logger.info("GitHub webhook signature verification skipped: no secret configured.")
             return True
@@ -37,14 +43,18 @@ def verify_github_signature(
         return False
 
     received_hash = signature_header[len(prefix) :].strip()
-    mac = hmac.new(
-        webhook_secret.encode("utf-8"),
-        msg=payload_bytes,
-        digestmod=hashlib.sha256,
-    )
-    expected_hash = mac.hexdigest()
 
-    return hmac.compare_digest(received_hash, expected_hash)
+    for candidate in candidate_secrets:
+        mac = hmac.new(
+            candidate.encode("utf-8"),
+            msg=payload_bytes,
+            digestmod=hashlib.sha256,
+        )
+        expected_hash = mac.hexdigest()
+        if hmac.compare_digest(received_hash, expected_hash):
+            return True
+
+    return False
 
 
 async def post_github_commit_status(
