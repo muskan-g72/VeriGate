@@ -46,3 +46,6 @@ app.include_router(
     api_router,
     prefix="/api/v1",
 )
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+def health_check() -> dict[str, str]:
+    return {"status": "ok"}
