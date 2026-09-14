@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    role: str = "user"
 
 
 class ForgotPasswordRequest(BaseModel):

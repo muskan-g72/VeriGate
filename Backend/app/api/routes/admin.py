@@ -1,13 +1,15 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.routes.audit_logs import build_audit_log_query, serialize_audit_logs
 from app.core.permissions import AdminUser
 from app.db.session import get_db
+from app.schemas.user import UserRoleUpdate, UserStatusUpdate
+from app.services.audit_service import record_audit_event
 from app.models.audit_log import AuditLog
 from app.models.issue import Issue
 from app.models.project import Project
@@ -59,6 +61,120 @@ def admin_list_users(
         }
         for user in users
     ]
+
+
+@router.get("/users/{user_id}", response_model=AdminUserResponse)
+def admin_get_user(
+    user_id: uuid.UUID,
+    _admin: AdminUser,
+    database_session: Annotated[Session, Depends(get_db)],
+) -> dict:
+    user = database_session.get(User, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.system_role,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+    }
+
+
+@router.patch("/users/{user_id}/role", response_model=AdminUserResponse)
+def admin_update_user_role(
+    user_id: uuid.UUID,
+    role_data: UserRoleUpdate,
+    _admin: AdminUser,
+    database_session: Annotated[Session, Depends(get_db)],
+) -> dict:
+    user = database_session.get(User, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Prevent admin from demoting themselves to avoid accidental lockout
+    if user.id == _admin.id and role_data.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot demote your own admin account",
+        )
+
+    old_role = user.system_role
+    user.system_role = role_data.role
+    database_session.add(user)
+
+    record_audit_event(
+        database_session,
+        user_id=_admin.id,
+        action="user_role_changed",
+        resource_type="user",
+        resource_id=user.id,
+        description=f"Admin {_admin.email} changed role of {user.email} from {old_role} to {role_data.role}",
+    )
+    database_session.commit()
+    database_session.refresh(user)
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.system_role,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+    }
+
+
+@router.patch("/users/{user_id}/status", response_model=AdminUserResponse)
+def admin_update_user_status(
+    user_id: uuid.UUID,
+    status_data: UserStatusUpdate,
+    _admin: AdminUser,
+    database_session: Annotated[Session, Depends(get_db)],
+) -> dict:
+    user = database_session.get(User, user_id)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Prevent admin from deactivating themselves
+    if user.id == _admin.id and not status_data.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot deactivate your own admin account",
+        )
+
+    user.is_active = status_data.is_active
+    database_session.add(user)
+
+    status_str = "activated" if status_data.is_active else "deactivated"
+    record_audit_event(
+        database_session,
+        user_id=_admin.id,
+        action="user_status_changed",
+        resource_type="user",
+        resource_id=user.id,
+        description=f"Admin {_admin.email} {status_str} account for {user.email}",
+    )
+    database_session.commit()
+    database_session.refresh(user)
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.system_role,
+        "is_active": user.is_active,
+        "created_at": user.created_at,
+    }
 
 
 @router.get("/projects", response_model=list[AdminProjectResponse])

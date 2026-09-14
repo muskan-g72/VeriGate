@@ -50,6 +50,14 @@ class User(Base):
         server_default="user",
         nullable=False,
     )
+
+    @property
+    def role(self) -> str:
+        return self.system_role
+
+    @role.setter
+    def role(self, value: str) -> None:
+        self.system_role = value
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

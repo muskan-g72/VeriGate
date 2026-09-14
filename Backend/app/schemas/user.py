@@ -1,3 +1,5 @@
+from typing import Literal
+
 import uuid
 from datetime import datetime
 
@@ -19,8 +21,18 @@ class UserRead(BaseModel):
     id: uuid.UUID
     email: EmailStr
     full_name: str | None
+    role: str = "user"
+    system_role: str = "user"
     is_active: bool
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserRoleUpdate(BaseModel):
+    role: Literal["admin", "user"]
+
+
+class UserStatusUpdate(BaseModel):
+    is_active: bool

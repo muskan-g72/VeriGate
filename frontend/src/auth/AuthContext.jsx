@@ -25,6 +25,13 @@ export function AuthProvider({ children }) {
     } catch (error) { sessionStore.clear(); throw error }
   }, [])
 
-  const value = useMemo(() => ({ user, status, sessionNotice, login, logout }), [user, status, sessionNotice, login, logout])
+  const role = user?.role || user?.system_role || 'user'
+  const isAdmin = role === 'admin'
+  const isUser = role === 'user'
+
+  const value = useMemo(
+    () => ({ user, role, isAdmin, isUser, status, sessionNotice, login, logout }),
+    [user, role, isAdmin, isUser, status, sessionNotice, login, logout],
+  )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

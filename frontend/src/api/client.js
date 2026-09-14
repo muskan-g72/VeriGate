@@ -172,6 +172,17 @@ export const auditLogsApi = { list: (filters = {}) => request(`/api/v1/audit-log
 export const adminApi = {
   statistics: () => request('/api/v1/admin/statistics'),
   users: () => request('/api/v1/admin/users'),
+  getUser: (userId) => request(`/api/v1/admin/users/${userId}`),
+  updateUserRole: (userId, role) => request(`/api/v1/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ role }),
+  }),
+  updateUserStatus: (userId, isActive) => request(`/api/v1/admin/users/${userId}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_active: isActive }),
+  }),
   teams: () => request('/api/v1/admin/teams'),
   projects: () => request('/api/v1/admin/projects'),
   runs: (filters = {}) => request(`/api/v1/admin/verification-runs?${new URLSearchParams(Object.entries(filters).filter(([, value]) => value)).toString()}`),
