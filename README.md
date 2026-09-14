@@ -128,3 +128,9 @@ cd frontend
 npm run dev
 ```
 Frontend will be available at `http://localhost:5173`.
+
+---
+
+## Verification
+
+This repository is configured with automated PR verification via VeriGate.
