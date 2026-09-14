@@ -49,7 +49,7 @@ MANAGE_MEMBER_ROLES = (PROJECT_ROLE_OWNER, PROJECT_ROLE_MANAGER)
 
 
 def is_system_admin(user: User) -> bool:
-    return user.system_role == SYSTEM_ROLE_ADMIN
+    return (user.system_role or "").lower() == SYSTEM_ROLE_ADMIN
 
 
 def user_project_ids_subquery(user_id: uuid.UUID):

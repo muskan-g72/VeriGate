@@ -45,6 +45,7 @@ def register_user(
         email=str(user_data.email),
         password_hash=hash_password(user_data.password),
         full_name=user_data.full_name,
+        system_role=user_data.role,
     )
     database_session.add(user)
 
@@ -64,7 +65,7 @@ def register_user(
         action="user_created",
         resource_type="user",
         resource_id=user.id,
-        description=f"User {user.email} registered",
+        description=f"User {user.email} registered ({user.system_role})",
     )
     database_session.commit()
     return user

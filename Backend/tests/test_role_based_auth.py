@@ -50,6 +50,82 @@ def test_user_registration_defaults_to_user_role(client: TestClient) -> None:
     assert data["system_role"] == "user"
 
 
+def test_register_as_user_explicit_role(client: TestClient) -> None:
+    unique_email = f"user_{uuid.uuid4().hex[:8]}@example.com"
+    response = client.post(
+        REGISTER_URL,
+        json={
+            "email": unique_email,
+            "password": "SecurePassword123!",
+            "full_name": "Registered User",
+            "role": "USER",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["role"] == "user"
+    assert data["system_role"] == "user"
+
+    # Login works
+    login_resp = client.post(
+        LOGIN_URL,
+        data={"username": unique_email, "password": "SecurePassword123!"},
+    )
+    assert login_resp.status_code == 200
+    token = login_resp.json()["access_token"]
+    assert login_resp.json()["role"] == "user"
+
+    # Admin endpoints inaccessible (403)
+    headers = {"Authorization": f"Bearer {token}"}
+    admin_resp = client.get(ADMIN_STATS_URL, headers=headers)
+    assert admin_resp.status_code == 403
+
+
+def test_register_as_admin_explicit_role(client: TestClient) -> None:
+    unique_email = f"admin_{uuid.uuid4().hex[:8]}@example.com"
+    response = client.post(
+        REGISTER_URL,
+        json={
+            "email": unique_email,
+            "password": "SecurePassword123!",
+            "full_name": "Registered Admin",
+            "role": "ADMIN",
+        },
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert data["role"] == "admin"
+    assert data["system_role"] == "admin"
+
+    # Login works
+    login_resp = client.post(
+        LOGIN_URL,
+        data={"username": unique_email, "password": "SecurePassword123!"},
+    )
+    assert login_resp.status_code == 200
+    token = login_resp.json()["access_token"]
+    assert login_resp.json()["role"] == "admin"
+
+    # Admin endpoints accessible (200)
+    headers = {"Authorization": f"Bearer {token}"}
+    admin_resp = client.get(ADMIN_STATS_URL, headers=headers)
+    assert admin_resp.status_code == 200
+
+
+def test_register_with_invalid_role_rejected(client: TestClient) -> None:
+    unique_email = f"invalid_{uuid.uuid4().hex[:8]}@example.com"
+    response = client.post(
+        REGISTER_URL,
+        json={
+            "email": unique_email,
+            "password": "SecurePassword123!",
+            "full_name": "Invalid Role User",
+            "role": "SUPERADMIN",
+        },
+    )
+    assert response.status_code == 422
+
+
 def test_normal_user_login_and_me(client: TestClient, db_session: Session) -> None:
     unique_email = f"user_{uuid.uuid4().hex[:8]}@example.com"
     create_user_in_db(db_session, email=unique_email, role="user")

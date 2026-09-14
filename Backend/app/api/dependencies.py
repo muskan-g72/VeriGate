@@ -53,7 +53,7 @@ def require_admin(current_user: CurrentUser) -> User:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user account",
         )
-    if current_user.system_role != "admin":
+    if (current_user.system_role or "").lower() != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
