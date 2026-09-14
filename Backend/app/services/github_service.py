@@ -20,29 +20,29 @@ def verify_github_signature(
     Timing-attack safe via hmac.compare_digest.
     Supports candidate secrets from project record and global settings.github_webhook_secret.
     """
-    candidate_secrets: list[str] = []
-    if secret:
-        candidate_secrets.append(secret)
-    if settings.github_webhook_secret and settings.github_webhook_secret not in candidate_secrets:
-        candidate_secrets.append(settings.github_webhook_secret)
-
-    if not candidate_secrets:
-        if not signature_header:
-            logger.info("GitHub webhook signature verification skipped: no secret configured.")
-            return True
-        logger.warning("No webhook secret configured to verify signature.")
-        return False
-
     if not signature_header:
         logger.warning("Missing X-Hub-Signature-256 header.")
         return False
 
+    candidate_secrets: list[str] = []
+    if secret and secret.strip():
+        candidate_secrets.append(secret.strip())
+    if settings.github_webhook_secret and settings.github_webhook_secret.strip():
+        global_secret = settings.github_webhook_secret.strip()
+        if global_secret not in candidate_secrets:
+            candidate_secrets.append(global_secret)
+
+    if not candidate_secrets:
+        logger.warning("No webhook secret configured to verify signature.")
+        return False
+
+    clean_header = signature_header.strip()
     prefix = "sha256="
-    if not signature_header.startswith(prefix):
+    if not clean_header.lower().startswith(prefix):
         logger.warning("Malformed X-Hub-Signature-256 format.")
         return False
 
-    received_hash = signature_header[len(prefix) :].strip()
+    received_hash = clean_header[len(prefix) :].strip()
 
     for candidate in candidate_secrets:
         mac = hmac.new(

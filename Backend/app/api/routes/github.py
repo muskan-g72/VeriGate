@@ -18,6 +18,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.dependencies import CurrentUser
+from app.core.config import settings
 from app.core.permissions import (
     VIEW_PROJECT_ROLES,
     get_accessible_project,
@@ -51,7 +52,7 @@ def normalize_github_repo(raw: str | None) -> str | None:
 
 @router.post(
     "/webhook",
-    status_code=status.HTTP_202_ACCEPTED,
+    status_code=status.HTTP_200_OK,
     summary="GitHub Webhook Receiver",
     description="Receives GitHub pull_request webhook events, validates HMAC-SHA256 signature, creates an associated VerificationRun, and triggers background Playwright verification with screenshot evidence and AI root-cause diagnosis.",
 )
@@ -69,34 +70,58 @@ async def github_webhook(
     Validates HMAC signature, creates an associated VerificationRun, and triggers
     asynchronous verification in background tasks.
     """
+    # 1. Extract headers robustly (supporting header dependencies and raw request headers)
+    event_name = (
+        x_github_event
+        or request.headers.get("x-github-event")
+        or request.headers.get("X-GitHub-Event")
+    )
+    signature_header = (
+        x_hub_signature_256
+        or request.headers.get("x-hub-signature-256")
+        or request.headers.get("X-Hub-Signature-256")
+    )
+    delivery_id = (
+        x_github_delivery
+        or request.headers.get("x-github-delivery")
+        or request.headers.get("X-GitHub-Delivery")
+    )
+
     payload_bytes = await request.body()
 
-    # 1. Handle ping event
-    if x_github_event == "ping":
+    # 2. Handle ping event
+    if event_name == "ping":
+        logger.info(
+            f"GitHub webhook received | Event: ping | Delivery ID: {delivery_id or 'none'}"
+        )
         response.status_code = status.HTTP_200_OK
         return {
             "status": "pong",
             "message": "VeriGate GitHub webhook receiver active.",
         }
 
-    # 2. Only process pull_request events
-    if x_github_event != "pull_request":
+    # 3. Only process pull_request events
+    if event_name != "pull_request":
+        logger.info(
+            f"GitHub webhook received | Event: {event_name or 'none'} | Delivery ID: {delivery_id or 'none'} | Status: ignored"
+        )
         response.status_code = status.HTTP_200_OK
         return {
             "status": "ignored",
-            "reason": f"Event '{x_github_event}' is not supported.",
+            "reason": f"Event '{event_name}' is not supported.",
         }
 
-    # 3. Parse JSON payload
+    # 4. Parse JSON payload
     try:
         payload = json.loads(payload_bytes.decode("utf-8"))
     except Exception as exc:
+        logger.warning(f"Malformed JSON payload in GitHub webhook: {exc}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Malformed JSON payload: {exc}",
         )
 
-    # 4. Resolve repository full name
+    # 5. Resolve repository full name
     repo_data = payload.get("repository") or {}
     repo_full_name = repo_data.get("full_name")
     if not repo_full_name:
@@ -105,7 +130,16 @@ async def github_webhook(
             detail="Payload missing repository full_name.",
         )
 
-    # 5. Find matching VeriGate projects (all enabled projects configured for this repo)
+    action = payload.get("action")
+    pr_data = payload.get("pull_request") or {}
+    pr_number = pr_data.get("number")
+
+    # Safe structured logging without secrets, credentials, or tokens
+    logger.info(
+        f"GitHub webhook received | Event: {event_name} | Delivery ID: {delivery_id or 'none'} | Repository: {repo_full_name} | PR: #{pr_number} | Action: {action}"
+    )
+
+    # 6. Find matching VeriGate projects (all enabled projects configured for this repo)
     normalized_repo = normalize_github_repo(repo_full_name) or repo_full_name
     projects = list(
         database_session.scalars(
@@ -122,30 +156,65 @@ async def github_webhook(
     )
 
     if not projects:
+        logger.warning(
+            f"No VeriGate project configured for repository '{repo_full_name}'"
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"No VeriGate project configured for repository '{repo_full_name}'.",
         )
 
-    # 6. Verify HMAC-SHA256 signature against matching project secrets or global settings secret
+    # 7. Collect candidate secrets and verify HMAC-SHA256 signature
+    candidate_secrets: list[str] = []
+    if settings.github_webhook_secret and settings.github_webhook_secret.strip():
+        candidate_secrets.append(settings.github_webhook_secret.strip())
+    for p in projects:
+        if p.github_webhook_secret and p.github_webhook_secret.strip():
+            candidate = p.github_webhook_secret.strip()
+            if candidate not in candidate_secrets:
+                candidate_secrets.append(candidate)
+
+    # Server secret missing -> 500 Configuration Error
+    if not candidate_secrets:
+        logger.error(
+            f"GitHub webhook secret not configured on server for repository '{repo_full_name}'"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Webhook secret not configured on server.",
+        )
+
+    # Missing signature header -> 401 Unauthorized
+    if not signature_header:
+        logger.warning(
+            f"Missing X-Hub-Signature-256 header | Repository: {repo_full_name} | Delivery: {delivery_id or 'none'}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing X-Hub-Signature-256 header.",
+        )
+
     is_valid = any(
         verify_github_signature(
             payload_bytes=payload_bytes,
-            signature_header=x_hub_signature_256,
-            secret=p.github_webhook_secret,
+            signature_header=signature_header,
+            secret=secret,
         )
-        for p in projects
-    ) or verify_github_signature(
-        payload_bytes=payload_bytes,
-        signature_header=x_hub_signature_256,
-        secret=None,
+        for secret in candidate_secrets
     )
 
     if not is_valid:
+        logger.warning(
+            f"GitHub signature verification: failed | Repository: {repo_full_name} | PR: #{pr_number} | Delivery: {delivery_id or 'none'}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid GitHub webhook signature.",
         )
+
+    logger.info(
+        f"GitHub signature verification: success | Repository: {repo_full_name} | PR: #{pr_number}"
+    )
 
     # Filter to projects with GitHub verification enabled
     enabled_projects = [p for p in projects if p.github_verification_enabled]
@@ -156,8 +225,7 @@ async def github_webhook(
             "reason": "GitHub verification is disabled for configured project(s).",
         }
 
-    # 7. Check action type (opened, synchronize, reopened)
-    action = payload.get("action")
+    # 8. Check action type (opened, synchronize, reopened)
     if action not in {"opened", "synchronize", "reopened"}:
         response.status_code = status.HTTP_200_OK
         return {
@@ -165,9 +233,7 @@ async def github_webhook(
             "reason": f"PR action '{action}' does not trigger verification.",
         }
 
-    # 8. Extract Pull Request metadata
-    pr_data = payload.get("pull_request") or {}
-    pr_number = pr_data.get("number")
+    # 9. Extract Pull Request metadata
     pr_title = pr_data.get("title") or "Pull Request"
     pr_author = (pr_data.get("user") or {}).get("login")
     head = pr_data.get("head") or {}
@@ -277,9 +343,13 @@ async def github_webhook(
                     selected_cases = [default_case]
 
             # 10. Check for existing PR verification run for this project and PR number
-            idempotency_key = (
+            state_key = (
                 f"github_pr:{project.id}:{repo_full_name}:{pr_number}:{head_sha}:{action}"
             )
+            delivery_key = (
+                f"github_pr:{project.id}:{delivery_id}" if delivery_id else None
+            )
+            idempotency_key = delivery_key or state_key
 
             existing_run = database_session.scalar(
                 select(VerificationRun)
@@ -295,9 +365,17 @@ async def github_webhook(
                 .order_by(VerificationRun.created_at.desc())
             )
 
-            if existing_run and existing_run.idempotency_key == idempotency_key:
+            is_duplicate = False
+            if existing_run:
+                duplicate_match_keys = {idempotency_key, state_key}
+                if delivery_key:
+                    duplicate_match_keys.add(delivery_key)
+                if existing_run.idempotency_key in duplicate_match_keys:
+                    is_duplicate = True
+
+            if is_duplicate and existing_run:
                 logger.info(
-                    f"Duplicate delivery for project {project.name} PR #{pr_number}@{short_sha}:{action}"
+                    f"Duplicate delivery for project {project.name} PR #{pr_number}@{short_sha}:{action} (delivery: {delivery_id or 'none'})"
                 )
                 response.status_code = status.HTTP_200_OK
                 return {
@@ -391,6 +469,7 @@ async def github_webhook(
             )
 
     primary_run = processed_runs[0]
+    response.status_code = status.HTTP_200_OK
     return {
         "status": "queued",
         "verification_run_id": str(primary_run.id),

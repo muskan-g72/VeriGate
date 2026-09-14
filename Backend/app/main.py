@@ -46,6 +46,9 @@ app.include_router(
     api_router,
     prefix="/api/v1",
 )
-@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
-def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+@app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
+def root() -> dict[str, str]:
+    return {
+        "message": "Welcome to the VeriGate API",
+        "documentation": "/docs",
+    }

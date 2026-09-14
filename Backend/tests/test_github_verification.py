@@ -171,6 +171,41 @@ def test_github_webhook_invalid_signatures(client: TestClient):
     )
     assert resp.status_code == 401
 
+    # Missing server secret -> 500 Internal Server Error
+    from app.core.config import settings
+    orig_global_secret = settings.github_webhook_secret
+    try:
+        settings.github_webhook_secret = None
+        p_no_sec = client.post(
+            "/api/v1/projects",
+            headers=headers,
+            json={"name": "No Sec Project"},
+        ).json()["id"]
+        repo_no_sec = f"org/no-sec-{uuid.uuid4().hex[:6]}"
+        client.patch(
+            f"/api/v1/projects/{p_no_sec}/github",
+            headers=headers,
+            json={"github_repo": repo_no_sec, "github_webhook_secret": ""},
+        )
+        p_bytes = json.dumps({
+            "action": "opened",
+            "repository": {"full_name": repo_no_sec},
+            "pull_request": {"number": 1, "head": {"sha": "abc1234"}, "base": {"ref": "main"}},
+        }).encode("utf-8")
+        resp_no_sec = client.post(
+            "/api/v1/github/webhook",
+            headers={
+                "X-GitHub-Event": "pull_request",
+                "X-Hub-Signature-256": "sha256=abcdef123456",
+                "Content-Type": "application/json",
+            },
+            content=p_bytes,
+        )
+        assert resp_no_sec.status_code == 500
+        assert "Webhook secret not configured on server" in resp_no_sec.json()["detail"]
+    finally:
+        settings.github_webhook_secret = orig_global_secret
+
 
 def test_github_webhook_pr_opened_and_idempotency(client: TestClient):
     user_email = f"gh_flow_{uuid.uuid4().hex[:8]}@example.com"
@@ -238,7 +273,7 @@ def test_github_webhook_pr_opened_and_idempotency(client: TestClient):
         },
         content=payload_bytes,
     )
-    assert resp1.status_code == 202
+    assert resp1.status_code == 200
     data1 = resp1.json()
     assert data1["status"] in ("queued", "enqueued")
     assert data1["pr_number"] == 99
@@ -317,7 +352,7 @@ def test_github_webhook_pr_opened_and_idempotency(client: TestClient):
         },
         content=sync_bytes,
     )
-    assert sync_resp.status_code == 202
+    assert sync_resp.status_code == 200
     assert sync_resp.json()["verification_run_id"] == run_id
 
     # Verify updated record
