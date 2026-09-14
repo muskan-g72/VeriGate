@@ -58,6 +58,15 @@ def register_user(
         ) from error
 
     database_session.refresh(user)
+    record_audit_event(
+        database_session,
+        user_id=user.id,
+        action="user_created",
+        resource_type="user",
+        resource_id=user.id,
+        description=f"User {user.email} registered",
+    )
+    database_session.commit()
     return user
 
 
@@ -70,6 +79,14 @@ def login(
     user = database_session.scalar(select(User).where(User.email == email))
 
     if user is None or not verify_password(form_data.password, user.password_hash):
+        record_audit_event(
+            database_session,
+            user_id=user.id if user else None,
+            action="failed_login",
+            resource_type="auth",
+            description=f"Failed login attempt for {email}",
+        )
+        database_session.commit()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -77,12 +94,32 @@ def login(
         )
 
     if not user.is_active:
+        record_audit_event(
+            database_session,
+            user_id=user.id,
+            action="inactive_login_attempt",
+            resource_type="auth",
+            description=f"Login attempt by inactive user {email}",
+        )
+        database_session.commit()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Inactive user",
         )
 
-    return Token(access_token=create_access_token(str(user.id)))
+    record_audit_event(
+        database_session,
+        user_id=user.id,
+        action="login",
+        resource_type="auth",
+        description=f"User {user.email} logged in ({user.system_role})",
+    )
+    database_session.commit()
+
+    return Token(
+        access_token=create_access_token(str(user.id), role=user.system_role),
+        role=user.system_role,
+    )
 
 
 @router.get("/me", response_model=UserRead)

@@ -13,7 +13,19 @@ export function LoginPage() {
     if (!/^\S+@\S+\.\S+$/.test(form.email)) next.email = 'Enter a valid email address.'
     if (!form.password) next.password = 'Enter your password.'
     setErrors(next); setServerError(''); if (Object.keys(next).length) return; setPending(true)
-    try { await login(form.email.trim(), form.password); navigate('/app', { replace: true }) } catch (error) { setServerError(error.status === 401 ? 'Incorrect email or password.' : error.message) } finally { setPending(false) }
+    try {
+      const authenticatedUser = await login(form.email.trim(), form.password)
+      const userRole = authenticatedUser?.role || authenticatedUser?.system_role || 'user'
+      if (userRole === 'admin') {
+        navigate('/admin/dashboard', { replace: true })
+      } else {
+        navigate('/dashboard', { replace: true })
+      }
+    } catch (error) {
+      setServerError(error.status === 401 ? 'Incorrect email or password.' : error.message)
+    } finally {
+      setPending(false)
+    }
   }
   return <AuthLayout eyebrow="Secure access" title="Welcome back" description="Sign in to continue to your verification workspace." footer={<>New to VeriGate? <Link to="/register">Create an account</Link></>}>
     {(sessionNotice || serverError) && <div className="form-alert" role="alert"><strong>{sessionNotice ? 'Session ended' : 'Unable to sign in'}</strong><span>{serverError || sessionNotice}</span></div>}

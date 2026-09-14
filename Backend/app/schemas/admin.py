@@ -16,6 +16,8 @@ class AdminStatisticsResponse(BaseModel):
     total_issues: int
     failed_results: int
     open_issues: int
+    successful_verification_runs: int = 0
+    failed_verification_runs: int = 0
 
 
 class AdminUserResponse(BaseModel):

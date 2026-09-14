@@ -196,6 +196,12 @@ def build_admin_statistics(database_session: Session) -> dict:
     open_issues = database_session.scalar(
         select(func.count(Issue.id)).where(Issue.status == "open")
     ) or 0
+    successful_runs = database_session.scalar(
+        select(func.count(VerificationRun.id)).where(VerificationRun.status == "completed")
+    ) or 0
+    failed_runs = database_session.scalar(
+        select(func.count(VerificationRun.id)).where(VerificationRun.status == "failed")
+    ) or 0
 
     return {
         "total_users": int(total_users),
@@ -206,4 +212,6 @@ def build_admin_statistics(database_session: Session) -> dict:
         "total_issues": int(total_issues),
         "failed_results": int(failed_results),
         "open_issues": int(open_issues),
+        "successful_verification_runs": int(successful_runs),
+        "failed_verification_runs": int(failed_runs),
     }
