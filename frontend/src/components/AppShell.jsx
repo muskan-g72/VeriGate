@@ -2,17 +2,20 @@ import {
   Bell,
   BookOpen,
   Boxes,
+  Bug,
   ChevronDown,
   ChevronsLeft,
   FlaskConical,
   Gauge,
   GitPullRequest,
   KeyRound,
+  Layers3,
   Menu,
   Play,
   Search,
   Settings,
   Shield,
+  TestTube2,
   Users,
   X,
 } from 'lucide-react'
@@ -35,8 +38,18 @@ const adminNavGroups = [
     ],
   ],
   [
+    'Testing',
+    [
+      [BookOpen, 'Test Library', '/app/test-library'],
+      [Layers3, 'Test Suites', '/app/test-suites'],
+      [TestTube2, 'Test Cases', '/app/test-cases'],
+      [Play, 'Playwright Tests', '/app/playwright-tests'],
+    ],
+  ],
+  [
     'Quality & Audit',
     [
+      [Bug, 'Issues', '/app/issues'],
       [FlaskConical, 'Evidence', '/admin/evidence'],
       [BookOpen, 'Reports', '/admin/reports'],
       [Shield, 'Audit Logs', '/admin/audit-logs'],
@@ -56,13 +69,23 @@ const userNavGroups = [
     [
       [Gauge, 'Dashboard', '/dashboard'],
       [Boxes, 'My Projects', '/app/projects'],
-      [Play, 'Verification', '/app/runs'],
-      [GitPullRequest, 'GitHub / PRs', '/app/github-prs'],
+      [Play, 'Verification Runs', '/app/runs'],
+    ],
+  ],
+  [
+    'Testing',
+    [
+      [BookOpen, 'Test Library', '/app/test-library'],
+      [Layers3, 'Test Suites', '/app/test-suites'],
+      [TestTube2, 'Test Cases', '/app/test-cases'],
+      [Play, 'Playwright Tests', '/app/playwright-tests'],
+      [GitPullRequest, 'PR Verifications', '/app/github-prs'],
     ],
   ],
   [
     'Quality',
     [
+      [Bug, 'Issues', '/app/issues'],
       [FlaskConical, 'Evidence', '/app/evidence'],
       [BookOpen, 'Reports', '/app/insights'],
     ],

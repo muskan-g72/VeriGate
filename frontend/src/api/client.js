@@ -17,8 +17,16 @@ async function request(path, options = {}) {
   const headers = new Headers(options.headers)
   const token = sessionStore.get()
   if (token) headers.set('Authorization', `Bearer ${token}`)
+  const controller = new AbortController()
+  const timeoutMs = options.timeout || 15000
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, { ...options, headers })
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers,
+      signal: options.signal || controller.signal,
+    })
+    clearTimeout(timer)
     const payload = await response.json().catch(() => null)
     if (!response.ok) {
       const detail = typeof payload?.detail === 'string' ? payload.detail : 'The request could not be completed.'
@@ -26,6 +34,10 @@ async function request(path, options = {}) {
     }
     return payload
   } catch (error) {
+    clearTimeout(timer)
+    if (error.name === 'AbortError') {
+      throw new ApiError('Request timed out. Please check your connection and try again.', 408, 'timeout')
+    }
     if (error instanceof ApiError) throw error
     throw new ApiError('VeriGate API is unavailable. Check the server and try again.', 0, 'unavailable')
   }
