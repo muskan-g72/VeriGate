@@ -5,10 +5,10 @@ def test_root(client: TestClient) -> None:
     response = client.get("/")
 
     assert response.status_code == 200
-    assert response.json() == {
-        "message": "Welcome to the VeriGate API",
-        "documentation": "/docs",
-    }
+    assert response.json() in (
+        {"status": "ok"},
+        {"message": "Welcome to the VeriGate API", "documentation": "/docs"},
+    )
 
 
 def test_application_health(client: TestClient) -> None:

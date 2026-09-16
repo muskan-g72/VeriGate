@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const API_URL = import.meta.env.VITE_API_URL;
 const TOKEN_KEY = 'verigate_session'
 
 export class ApiError extends Error {
@@ -21,7 +21,7 @@ async function request(path, options = {}) {
   const timeoutMs = options.timeout || 15000
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${API_URL}${path}`, {
       ...options,
       headers,
       signal: options.signal || controller.signal,
@@ -48,7 +48,7 @@ async function downloadBlob(path) {
   const token = sessionStore.get()
   if (token) headers.set('Authorization', `Bearer ${token}`)
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, { headers })
+    const response = await fetch(`${API_URL}${path}`, { headers })
     if (!response.ok) {
       const payload = typeof response.json === 'function' ? await response.json().catch(() => null) : null
       const detail = typeof payload?.detail === 'string' ? payload.detail : 'Failed to download file.'

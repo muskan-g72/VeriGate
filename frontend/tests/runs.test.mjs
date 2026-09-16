@@ -4,7 +4,7 @@ import test from 'node:test'
 import { filterRuns, loadRuns, runsEmptyState, summarizeRuns } from '../src/runs.js'
 import { runProgress } from '../src/verification.js'
 
-const source = (await readFile(new URL('../src/api/client.js', import.meta.url), 'utf8')).replace('import.meta.env.VITE_API_BASE_URL', '"http://verigate.test"')
+const source = (await readFile(new URL('../src/api/client.js', import.meta.url), 'utf8')).replace(/import\.meta\.env\.VITE_API_(URL|BASE_URL)/, '"http://verigate.test"')
 const { projectsApi, testSuitesApi, verificationRunsApi, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 const api = { listProjects: projectsApi.list, listSuites: testSuitesApi.list, listRuns: verificationRunsApi.list }
 globalThis.sessionStorage = { getItem: () => 'runs-test-token' }
