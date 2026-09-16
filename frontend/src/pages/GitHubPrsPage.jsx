@@ -255,13 +255,11 @@ export function GitHubPrsPage() {
                   In your GitHub repository settings, add a Webhook pointing to your backend:
                   <div className="code-snippet">
                     <code>
-                      {window.location.port === '5173'
-                        ? `${window.location.protocol}//${window.location.hostname}:8000/api/v1/github/webhook`
-                        : `${window.location.origin}/api/v1/github/webhook`}
+                      {`${(import.meta.env.VITE_API_URL || 'https://verigate-ppkr.onrender.com').replace(/\/$/, '')}/api/v1/github/webhook`}
                     </code>
                   </div>
                   <small style={{ color: 'var(--muted)', display: 'block', marginTop: '0.25rem' }}>
-                    Tip for local testing: use an HTTPS tunnel like <code>ngrok http 8000</code>.
+                    GitHub requires an HTTPS reachable URL. Your backend is configured at <code>{import.meta.env.VITE_API_URL || 'https://verigate-ppkr.onrender.com'}</code>.
                   </small>
                 </li>
                 <li>

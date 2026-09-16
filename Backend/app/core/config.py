@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     github_api_url: str = "https://api.github.com"
 
     model_config = SettingsConfigDict(
-        env_file=BACKEND_DIRECTORY / ".env",
+        env_file=(BACKEND_DIRECTORY / ".env", BACKEND_DIRECTORY.parent / ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

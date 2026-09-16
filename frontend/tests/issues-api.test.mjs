@@ -1,9 +1,9 @@
-﻿import assert from 'node:assert/strict'
+import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { canCreateIssue, issueDraft } from '../src/issues.js'
 
-const source = (await readFile(new URL('../src/api/client.js', import.meta.url), 'utf8')).replace('import.meta.env.VITE_API_BASE_URL', '"http://verigate.test"')
+const source = (await readFile(new URL('../src/api/client.js', import.meta.url), 'utf8')).replace(/import\.meta\.env\.VITE_API_(URL|BASE_URL)/, '"http://verigate.test"')
 const { issuesApi, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 globalThis.sessionStorage = { getItem: () => 'issue-test-token' }
 const resultId = '808676af-e425-4ed3-a5a0-c049633ee17f'

@@ -4,7 +4,7 @@ import test from 'node:test'
 
 // Replace Vite's import.meta.env at runtime to test with Node
 const clientSource = (await readFile(new URL('../src/api/client.js', import.meta.url), 'utf8'))
-  .replace('import.meta.env.VITE_API_BASE_URL', '"http://verigate.test"')
+  .replace(/import\.meta\.env\.VITE_API_(URL|BASE_URL)/, '"http://verigate.test"')
 const { testCasesApi, verificationRunsApi, sessionStore, ApiError } = await import(
   `data:text/javascript;base64,${Buffer.from(clientSource).toString('base64')}`
 )

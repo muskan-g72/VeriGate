@@ -111,12 +111,10 @@ export function ProjectSummaryPage() {
     )
   }
 
-  const result = summary.verification_results
+  const backendBaseUrl = (import.meta.env.VITE_API_URL || 'https://verigate-ppkr.onrender.com').replace(/\/$/, '')
   const webhookUrl =
     githubConfig?.webhook_url ||
-    (window.location.port === '5173'
-      ? `${window.location.protocol}//${window.location.hostname}:8000/api/v1/github/webhook`
-      : `${window.location.origin}/api/v1/github/webhook`)
+    `${backendBaseUrl}/api/v1/github/webhook`
 
   return (
     <main className="library-page project-summary-page">
@@ -313,9 +311,8 @@ export function ProjectSummaryPage() {
               </li>
             </ul>
             <div className="webhook-tip" style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--muted)' }}>
-              <strong>Local Development Tip:</strong> Because GitHub requires an HTTPS reachable URL, run{' '}
-              <code>ngrok http 8000</code> and set Payload URL to{' '}
-              <code>https://&lt;subdomain&gt;.ngrok-free.app/api/v1/github/webhook</code>.
+              <strong>GitHub Webhook URL:</strong> GitHub requires an HTTPS reachable URL. Your backend webhook URL is{' '}
+              <code>{backendBaseUrl}/api/v1/github/webhook</code>.
             </div>
           </div>
         </article>
