@@ -21,7 +21,7 @@ def sync_verification_run_status(
 ) -> None:
     current_time = now or datetime.now(UTC)
     result_statuses = [result.status for result in verification_run.results]
-    if all(
+    if result_statuses and all(
         result_status in FINAL_RESULT_STATUSES for result_status in result_statuses
     ):
         verification_run.status = "completed"

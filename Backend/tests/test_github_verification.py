@@ -7,7 +7,12 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
+from app.models.audit_log import AuditLog
+from app.models.test_case import TestCase
+from app.models.verification_run import VerificationRun
+from app.services.automated_verification import sync_verification_run_status
 from app.services.github_service import verify_github_signature, post_github_commit_status
 from app.services.github_pr_verifier import run_github_pr_verification
 
@@ -367,3 +372,174 @@ def test_run_github_pr_verification_service():
     # Test that the background worker handles verification run lifecycle safely
     fake_run_id = uuid.uuid4()
     asyncio.run(run_github_pr_verification(fake_run_id))
+
+
+def _configure_pr_project(client: TestClient, headers: dict[str, str], *, with_case: bool = False, active: bool = True):
+    repo_name = f"org/pr-skip-{uuid.uuid4().hex[:8]}"
+    secret = "pr-skip-secret"
+    project_id = client.post(
+        "/api/v1/projects", headers=headers, json={"name": "PR Skip Project"}
+    ).json()["id"]
+    client.patch(
+        f"/api/v1/projects/{project_id}/github",
+        headers=headers,
+        json={
+            "github_repo": repo_name,
+            "github_verification_enabled": True,
+            "github_webhook_secret": secret,
+        },
+    )
+    suite_id = client.post(
+        f"/api/v1/projects/{project_id}/test-suites",
+        headers=headers,
+        json={"name": "PR Suite"},
+    ).json()["id"]
+    if with_case:
+        case = client.post(
+            f"/api/v1/test-suites/{suite_id}/test-cases",
+            headers=headers,
+            json={
+                "title": "Automated PR check",
+                "steps": "Open the application",
+                "expected_result": "The application opens",
+                "execution_mode": "automated",
+                "automation_steps": [{"action": "goto", "value": "https://example.com"}],
+            },
+        )
+        assert case.status_code == 201
+        if not active:
+            disabled = client.patch(
+                f"/api/v1/test-cases/{case.json()['id']}",
+                headers=headers,
+                json={"is_active": False},
+            )
+            assert disabled.status_code == 200
+    payload = {
+        "action": "opened",
+        "repository": {"full_name": repo_name},
+        "pull_request": {
+            "number": 123,
+            "title": "Skip unsuitable suite",
+            "html_url": f"https://github.com/{repo_name}/pull/123",
+            "head": {"sha": "feedface1234", "ref": "feature/skip"},
+            "base": {"ref": "main"},
+            "user": {"login": "contributor"},
+        },
+    }
+    payload_bytes = json.dumps(payload).encode("utf-8")
+    return project_id, payload_bytes, secret
+
+
+@pytest.mark.parametrize("with_case,active", [(False, True), (True, False)])
+def test_pr_webhook_skips_projects_without_active_automated_cases(
+    client: TestClient, db_session, with_case: bool, active: bool
+):
+    headers = authenticated_headers(client, f"gh_skip_{uuid.uuid4().hex[:8]}@example.com")
+    project_id, payload_bytes, secret = _configure_pr_project(
+        client, headers, with_case=with_case, active=active
+    )
+
+    with patch("app.api.routes.github.post_github_commit_status", new=AsyncMock(return_value=True)) as post_status:
+        response = client.post(
+            "/api/v1/github/webhook",
+            headers={
+                "X-GitHub-Event": "pull_request",
+                "X-GitHub-Delivery": "skipped-delivery-123",
+                "X-Hub-Signature-256": sign_payload(payload_bytes, secret),
+                "Content-Type": "application/json",
+            },
+            content=payload_bytes,
+        )
+        replay = client.post(
+            "/api/v1/github/webhook",
+            headers={
+                "X-GitHub-Event": "pull_request",
+                "X-GitHub-Delivery": "skipped-delivery-123",
+                "X-Hub-Signature-256": sign_payload(payload_bytes, secret),
+                "Content-Type": "application/json",
+            },
+            content=payload_bytes,
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "skipped"
+    assert replay.status_code == 200
+    assert db_session.scalars(select(VerificationRun)).all() == []
+    assert not db_session.scalars(
+        select(TestCase).where(TestCase.title.like("Verify Example Domain%"))
+    ).all()
+    post_status.assert_awaited_once()
+    assert post_status.await_args.kwargs["state"] == "error"
+    assert post_status.await_args.kwargs["description"] == (
+        "VeriGate: no active automated test suite configured for this project"
+    )
+    audit = db_session.scalar(
+        select(AuditLog).where(AuditLog.project_id == uuid.UUID(project_id))
+    )
+    assert audit is not None
+    assert audit.action == "skipped_github_pr"
+
+
+def test_pr_webhook_active_case_creates_run_and_replay_is_idempotent(
+    client: TestClient, db_session
+):
+    headers = authenticated_headers(client, f"gh_active_{uuid.uuid4().hex[:8]}@example.com")
+    _, payload_bytes, secret = _configure_pr_project(client, headers, with_case=True)
+
+    with patch("app.api.routes.github.run_github_pr_verification", new=AsyncMock()) as execute:
+        first = client.post(
+            "/api/v1/github/webhook",
+            headers={
+                "X-GitHub-Event": "pull_request",
+                "X-GitHub-Delivery": "delivery-123",
+                "X-Hub-Signature-256": sign_payload(payload_bytes, secret),
+                "Content-Type": "application/json",
+            },
+            content=payload_bytes,
+        )
+        replay = client.post(
+            "/api/v1/github/webhook",
+            headers={
+                "X-GitHub-Event": "pull_request",
+                "X-GitHub-Delivery": "delivery-123",
+                "X-Hub-Signature-256": sign_payload(payload_bytes, secret),
+                "Content-Type": "application/json",
+            },
+            content=payload_bytes,
+        )
+
+    assert first.status_code == 200 and first.json()["status"] == "queued"
+    assert replay.status_code == 200 and replay.json()["status"] == "duplicate"
+    assert len(db_session.scalars(select(VerificationRun)).all()) == 1
+    assert execute.await_count == 1
+
+    async def mark_result_passed(_session, *, verification_run, **_kwargs):
+        verification_run.results[0].status = "passed"
+
+    with patch(
+        "app.services.github_pr_verifier.execute_automated_results",
+        new=AsyncMock(side_effect=mark_result_passed),
+    ) as execute_results, patch(
+        "app.services.github_pr_verifier.post_github_commit_status",
+        new=AsyncMock(return_value=True),
+    ) as post_status:
+        asyncio.run(
+            run_github_pr_verification(uuid.UUID(first.json()["run_id"]), db_session)
+        )
+
+    assert execute_results.await_count == 1
+    assert [call.kwargs["state"] for call in post_status.await_args_list] == [
+        "pending",
+        "success",
+    ]
+
+
+def test_zero_result_run_is_not_completed_by_status_sync():
+    run = VerificationRun(
+        test_suite_id=uuid.uuid4(),
+        created_by_id=uuid.uuid4(),
+        name="Empty run",
+        status="pending",
+    )
+    sync_verification_run_status(run)
+    assert run.status == "pending"

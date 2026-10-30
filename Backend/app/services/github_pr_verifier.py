@@ -81,13 +81,55 @@ async def run_github_pr_verification(
                 .order_by(TestCase.created_at)
             )
         )
+        automated_test_cases = [
+            test_case
+            for test_case in active_test_cases
+            if test_case.execution_mode == "automated"
+        ]
+
+        if not automated_test_cases:
+            verification_run.status = "completed"
+            verification_run.completed_at = datetime.now(UTC)
+            if project_id:
+                record_audit_event(
+                    database_session,
+                    user_id=user_id,
+                    action="skipped_github_pr",
+                    resource_type="verification_run",
+                    resource_id=verification_run.id,
+                    project_id=project_id,
+                    description=(
+                        f"GitHub PR #{verification_run.pr_number} verification skipped: "
+                        "no active automated test suite configured for this project."
+                    ),
+                )
+            database_session.commit()
+            if verification_run.pr_repository and verification_run.pr_commit_sha:
+                published = await post_github_commit_status(
+                    repo=verification_run.pr_repository,
+                    commit_sha=verification_run.pr_commit_sha,
+                    state="error",
+                    description=(
+                        "VeriGate: no active automated test suite configured for this project"
+                    ),
+                    target_url=(
+                        f"{settings.frontend_url.rstrip('/')}/app/test-library"
+                        f"?projectId={project_id}"
+                    ) if project_id else None,
+                )
+                if not published:
+                    logger.warning(
+                        "Unable to publish empty PR verification status for run %s.",
+                        verification_run.id,
+                    )
+            return
 
         # Execute automated test suite
-        if active_test_cases and project_id:
+        if project_id:
             await execute_automated_results(
                 database_session,
                 verification_run=verification_run,
-                test_cases=active_test_cases,
+                test_cases=automated_test_cases,
                 user_id=user_id,
                 project_id=project_id,
             )
@@ -105,7 +147,7 @@ async def run_github_pr_verification(
         for result in verification_run.results:
             if result.status in {"failed", "blocked"}:
                 test_case = next(
-                    (tc for tc in active_test_cases if tc.id == result.test_case_id),
+                    (tc for tc in automated_test_cases if tc.id == result.test_case_id),
                     result.test_case,
                 )
                 try:
@@ -143,12 +185,24 @@ async def run_github_pr_verification(
                 verification_run.failed_count > 0
                 or verification_run.blocked_count > 0
             )
-            state = "failure" if has_failures else "success"
+            has_executed_automated_result = any(
+                result.status in {"passed", "failed", "blocked"}
+                and result.test_case is not None
+                and result.test_case.execution_mode == "automated"
+                for result in verification_run.results
+            )
+            state = (
+                "error"
+                if not has_executed_automated_result
+                else "failure" if has_failures else "success"
+            )
             total = verification_run.total_cases
             passed = verification_run.passed_count
             failed = verification_run.failed_count
             desc = (
-                f"VeriGate: {passed}/{total} tests passed"
+                "VeriGate: no automated tests were executed"
+                if not has_executed_automated_result
+                else f"VeriGate: {passed}/{total} tests passed"
                 if not has_failures
                 else f"VeriGate: {failed} failed of {total} tests"
             )

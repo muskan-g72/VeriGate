@@ -26,14 +26,16 @@ from app.core.permissions import (
     project_access_condition,
 )
 from app.db.session import get_db
+from app.models.audit_log import AuditLog
 from app.models.project import Project
 from app.models.test_case import TestCase
 from app.models.test_suite import TestSuite
 from app.models.verification_result import VerificationResult
 from app.models.verification_run import VerificationRun
 from app.schemas.verification import VerificationRunRead
+from app.services.audit_service import record_audit_event
 from app.services.github_pr_verifier import run_github_pr_verification
-from app.services.github_service import verify_github_signature
+from app.services.github_service import post_github_commit_status, verify_github_signature
 
 logger = logging.getLogger(__name__)
 
@@ -253,96 +255,11 @@ async def github_webhook(
     run_name = f"PR #{pr_number}: {pr_title[:70]} ({short_sha})"
 
     processed_runs: list[VerificationRun] = []
+    skipped_projects: list[Project] = []
 
     # 9. Create or update VerificationRun for all enabled projects linked to this repo
     for project in enabled_projects:
         try:
-            # Determine or auto-initialize Test Suite for this project
-            suites = list(
-                database_session.scalars(
-                    select(TestSuite)
-                    .where(TestSuite.project_id == project.id)
-                    .order_by(TestSuite.created_at)
-                )
-            )
-            if not suites:
-                default_suite = TestSuite(
-                    project_id=project.id,
-                    name="PR Verification Suite",
-                    description="Automated verification test suite for GitHub pull requests",
-                )
-                database_session.add(default_suite)
-                database_session.flush()
-
-                default_case = TestCase(
-                    test_suite_id=default_suite.id,
-                    title=f"Verify Example Domain - PR #{pr_number}",
-                    description="Automated Playwright test for GitHub pull request verification",
-                    steps="1. Navigate to https://example.com\n2. Verify page title is 'Example Domain'",
-                    execution_mode="automated",
-                    automation_steps=[
-                        {"action": "goto", "value": "https://example.com"},
-                        {"action": "expect_title", "value": "Example Domain"},
-                    ],
-                    expected_result="Page loads and title matches Example Domain",
-                    priority="high",
-                )
-                database_session.add(default_case)
-                database_session.flush()
-                selected_suite = default_suite
-                selected_cases = [default_case]
-            else:
-                # Select suite with active automated cases or fallback to first suite
-                selected_suite = None
-                selected_cases = []
-                for suite in suites:
-                    cases = list(
-                        database_session.scalars(
-                            select(TestCase)
-                            .where(
-                                TestCase.test_suite_id == suite.id,
-                                TestCase.is_active.is_(True),
-                            )
-                            .order_by(TestCase.created_at)
-                        )
-                    )
-                    if any(c.execution_mode == "automated" for c in cases):
-                        selected_suite = suite
-                        selected_cases = cases
-                        break
-
-                if not selected_suite:
-                    selected_suite = suites[0]
-                    selected_cases = list(
-                        database_session.scalars(
-                            select(TestCase)
-                            .where(
-                                TestCase.test_suite_id == selected_suite.id,
-                                TestCase.is_active.is_(True),
-                            )
-                            .order_by(TestCase.created_at)
-                        )
-                    )
-
-                if not selected_cases:
-                    default_case = TestCase(
-                        test_suite_id=selected_suite.id,
-                        title=f"Verify Example Domain - PR #{pr_number}",
-                        description="Automated Playwright test for GitHub pull request verification",
-                        steps="1. Navigate to https://example.com\n2. Verify page title is 'Example Domain'",
-                        execution_mode="automated",
-                        automation_steps=[
-                            {"action": "goto", "value": "https://example.com"},
-                            {"action": "expect_title", "value": "Example Domain"},
-                        ],
-                        expected_result="Page loads and title matches Example Domain",
-                        priority="high",
-                    )
-                    database_session.add(default_case)
-                    database_session.flush()
-                    selected_cases = [default_case]
-
-            # 10. Check for existing PR verification run for this project and PR number
             state_key = (
                 f"github_pr:{project.id}:{repo_full_name}:{pr_number}:{head_sha}:{action}"
             )
@@ -351,6 +268,98 @@ async def github_webhook(
             )
             idempotency_key = delivery_key or state_key
 
+            # Select a suite with at least one active automated test case.
+            suites = list(
+                database_session.scalars(
+                    select(TestSuite)
+                    .where(TestSuite.project_id == project.id)
+                    .order_by(TestSuite.created_at)
+                )
+            )
+            selected_suite = None
+            selected_cases: list[TestCase] = []
+            for suite in suites:
+                cases = list(
+                    database_session.scalars(
+                        select(TestCase)
+                        .where(
+                            TestCase.test_suite_id == suite.id,
+                            TestCase.is_active.is_(True),
+                            TestCase.execution_mode == "automated",
+                        )
+                        .order_by(TestCase.created_at)
+                    )
+                )
+                if cases:
+                    selected_suite = suite
+                    selected_cases = cases
+                    break
+
+            if not selected_suite:
+                already_skipped = database_session.scalar(
+                    select(AuditLog.id).where(
+                        AuditLog.project_id == project.id,
+                        AuditLog.action == "skipped_github_pr",
+                        AuditLog.description.contains(
+                            f"[idempotency:{idempotency_key}]"
+                        ),
+                    )
+                )
+                if already_skipped:
+                    logger.info(
+                        "Duplicate skipped PR delivery for project %s PR #%s.",
+                        project.id,
+                        pr_number,
+                    )
+                    skipped_projects.append(project)
+                    continue
+
+                description = (
+                    "VeriGate: no active automated test suite configured for this project"
+                )
+                record_audit_event(
+                    database_session,
+                    user_id=project.owner_id,
+                    action="skipped_github_pr",
+                    resource_type="project",
+                    resource_id=project.id,
+                    project_id=project.id,
+                    description=(
+                        f"GitHub PR #{pr_number} skipped: no active automated test "
+                        "suite configured for this project. "
+                        f"[idempotency:{idempotency_key}]"
+                    ),
+                )
+                database_session.commit()
+                skipped_projects.append(project)
+
+                try:
+                    status_published = await post_github_commit_status(
+                        repo=repo_full_name,
+                        commit_sha=head_sha,
+                        state="error",
+                        description=description,
+                        target_url=(
+                            f"{settings.frontend_url.rstrip('/')}/app/test-library"
+                            f"?projectId={project.id}"
+                        ),
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to publish skipped PR status for project %s PR #%s.",
+                        project.id,
+                        pr_number,
+                    )
+                    status_published = False
+                if not status_published:
+                    logger.warning(
+                        "Unable to publish skipped PR status for project %s PR #%s.",
+                        project.id,
+                        pr_number,
+                    )
+                continue
+
+            # 10. Check for existing PR verification run for this project and PR number
             existing_run = database_session.scalar(
                 select(VerificationRun)
                 .join(TestSuite, VerificationRun.test_suite_id == TestSuite.id)
@@ -467,6 +476,16 @@ async def github_webhook(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Database error persisting GitHub PR verification: {exc}",
             )
+
+    if not processed_runs:
+        response.status_code = status.HTTP_200_OK
+        return {
+            "status": "skipped",
+            "project_id": str(skipped_projects[0].id) if skipped_projects else None,
+            "pr_number": pr_number,
+            "commit_sha": head_sha,
+            "message": "No active automated test suite is configured for this project.",
+        }
 
     primary_run = processed_runs[0]
     response.status_code = status.HTTP_200_OK
