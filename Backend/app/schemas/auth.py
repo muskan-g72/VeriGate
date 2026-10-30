@@ -24,3 +24,7 @@ class ResetPasswordRequest(BaseModel):
 class MessageResponse(BaseModel):
     message: str
 
+
+class OAuthCodeExchangeRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=256)
+

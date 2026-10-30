@@ -1,6 +1,7 @@
 from app.models.audit_log import AuditLog
 from app.models.evidence import Evidence
 from app.models.issue import Issue
+from app.models.oauth_account import OAuthAccount, OAuthAuthorization
 from app.models.password_reset_token import PasswordResetToken
 from app.models.project import Project
 from app.models.project_member import ProjectMember
@@ -19,6 +20,8 @@ __all__ = [
     "Project",
     "ProjectMember",
     "Issue",
+    "OAuthAccount",
+    "OAuthAuthorization",
     "Team",
     "TeamMember",
     "TestCase",

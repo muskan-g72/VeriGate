@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     github_webhook_secret: str | None = None
     github_token: str | None = None
     github_api_url: str = "https://api.github.com"
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    github_client_id: str | None = None
+    github_client_secret: str | None = None
+    oauth_redirect_base: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=(BACKEND_DIRECTORY / ".env", BACKEND_DIRECTORY.parent / ".env"),

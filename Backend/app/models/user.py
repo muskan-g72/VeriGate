@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.models.audit_log import AuditLog
     from app.models.issue import Issue
     from app.models.password_reset_token import PasswordResetToken
+    from app.models.oauth_account import OAuthAccount
     from app.models.project import Project
     from app.models.project_member import ProjectMember
     from app.models.team_member import TeamMember
@@ -30,9 +31,9 @@ class User(Base):
         index=True,
         nullable=False,
     )
-    password_hash: Mapped[str] = mapped_column(
+    password_hash: Mapped[str | None] = mapped_column(
         String(255),
-        nullable=False,
+        nullable=True,
     )
     full_name: Mapped[str | None] = mapped_column(
         String(100),
@@ -96,5 +97,8 @@ class User(Base):
     password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
+    )
+    oauth_accounts: Mapped[list["OAuthAccount"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
 

@@ -129,6 +129,10 @@ Upon step failure, Playwright automatically captures a full-page PNG screenshot,
 3. **Background Execution**: Active automated test cases for the matched repository are executed asynchronously.
 4. **Status Check Reporting**: If `GITHUB_TOKEN` is configured, VeriGate posts status updates (`pending`, `success`, `failure`) directly to the PR commit check.
 
+## OAuth Login
+
+Configure Google and/or GitHub OAuth with `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and `OAUTH_REDIRECT_BASE`. Register callback URLs as `<OAUTH_REDIRECT_BASE>/api/v1/auth/google/callback` and `<OAUTH_REDIRECT_BASE>/api/v1/auth/github/callback`. VeriGate uses PKCE for Google, requires verified provider emails before linking or creating accounts, and redirects the browser with a one-time exchange code rather than a JWT.
+
 ---
 
 ## API Overview
