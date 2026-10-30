@@ -24,14 +24,19 @@ export function AuthProvider({ children }) {
       return currentUser
     } catch (error) { sessionStore.clear(); throw error }
   }, [])
+  const completeOAuthLogin = useCallback(async (code) => {
+    const token = await authApi.exchangeOAuthCode(code)
+    sessionStore.set(token.access_token)
+    try { const currentUser = await authApi.me(); setUser(currentUser); setSessionNotice(''); setStatus('authenticated'); return currentUser } catch (error) { sessionStore.clear(); throw error }
+  }, [])
 
   const role = user?.role || user?.system_role || 'user'
   const isAdmin = role === 'admin'
   const isUser = role === 'user'
 
   const value = useMemo(
-    () => ({ user, role, isAdmin, isUser, status, sessionNotice, login, logout }),
-    [user, role, isAdmin, isUser, status, sessionNotice, login, logout],
+    () => ({ user, role, isAdmin, isUser, status, sessionNotice, login, completeOAuthLogin, logout }),
+    [user, role, isAdmin, isUser, status, sessionNotice, login, completeOAuthLogin, logout],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

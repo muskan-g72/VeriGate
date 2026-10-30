@@ -74,6 +74,8 @@ export const authApi = {
   me: () => request('/api/v1/auth/me'),
   forgotPassword: (email) => request('/api/v1/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }),
   resetPassword: (token, password) => request('/api/v1/auth/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, password }) }),
+  oauthLoginUrl: (provider) => `${API_URL}/api/v1/auth/${encodeURIComponent(provider)}/login`,
+  exchangeOAuthCode: (code) => request('/api/v1/auth/oauth/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }),
 }
 
 export const projectsApi = {

@@ -5,6 +5,7 @@ import { authApi } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { AuthLayout } from '../components/AuthLayout'
 import { PasswordField } from '../components/PasswordField'
+import { OAuthButtons } from '../components/OAuthButtons'
 
 export function RegisterPage() {
   const { login } = useAuth()
@@ -150,6 +151,7 @@ export function RegisterPage() {
             <>Create account<ArrowRight /></>
           )}
         </button>
+        <OAuthButtons disabled={pending || created} />
       </form>
     </AuthLayout>
   )

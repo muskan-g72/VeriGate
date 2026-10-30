@@ -17,6 +17,7 @@ import { IssuesPage } from './pages/IssuesPage'
 import { LandingPage } from './pages/LandingPage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { OAuthCallbackPage } from './pages/OAuthCallbackPage'
 import { OverviewPage } from './pages/OverviewPage'
 import { PlaywrightTestsPage } from './pages/PlaywrightTestsPage'
 import { ProjectSummaryPage } from './pages/ProjectSummaryPage'
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
         <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
         <Route path="/reset-password" element={<GuestRoute><ResetPasswordPage /></GuestRoute>} />
+        <Route path="/oauth/callback" element={<GuestRoute><OAuthCallbackPage /></GuestRoute>} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
         {/* User Dashboard Route */}
