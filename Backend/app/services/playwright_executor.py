@@ -7,6 +7,8 @@ from typing import Any
 
 from playwright.async_api import async_playwright
 
+EXECUTION_TIMEOUT_SECONDS = 60
+
 
 async def _execute_playwright_steps(
     steps: list[dict[str, Any]],
@@ -23,15 +25,22 @@ async def _execute_playwright_steps(
     }
 
     browser = None
+    context = None
     page = None
 
     try:
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(
-                headless=True
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ],
             )
 
-            page = await browser.new_page()
+            context = await browser.new_context()
+            page = await context.new_page()
 
             try:
                 for step_number, step in enumerate(
@@ -192,6 +201,11 @@ async def _execute_playwright_steps(
         )
 
     finally:
+        if context is not None:
+            try:
+                await context.close()
+            except Exception:
+                pass
         if browser is not None:
             try:
                 await browser.close()
@@ -201,13 +215,36 @@ async def _execute_playwright_steps(
     return result
 
 
+async def _execute_playwright_test_with_timeout(
+    steps: list[dict[str, Any]],
+) -> dict[str, Any]:
+    started_at = time.perf_counter()
+    try:
+        return await asyncio.wait_for(
+            _execute_playwright_steps(steps),
+            timeout=EXECUTION_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        return {
+            "status": "failed",
+            "actual_result": "Test timed out",
+            "failure_message": (
+                "Playwright execution timed out after "
+                f"{EXECUTION_TIMEOUT_SECONDS} seconds."
+            ),
+            "stack_trace": None,
+            "duration": round(time.perf_counter() - started_at, 3),
+            "screenshot": None,
+        }
+
+
 def _run_in_proactor_thread(
     steps: list[dict[str, Any]],
 ) -> dict[str, Any]:
     loop = asyncio.ProactorEventLoop()
     asyncio.set_event_loop(loop)
     try:
-        return loop.run_until_complete(_execute_playwright_steps(steps))
+        return loop.run_until_complete(_execute_playwright_test_with_timeout(steps))
     finally:
         try:
             loop.run_until_complete(loop.shutdown_asyncgens())
@@ -224,4 +261,4 @@ async def execute_playwright_test(
         loop, getattr(asyncio, "ProactorEventLoop", ())
     ):
         return await loop.run_in_executor(None, _run_in_proactor_thread, steps)
-    return await _execute_playwright_steps(steps)
+    return await _execute_playwright_test_with_timeout(steps)

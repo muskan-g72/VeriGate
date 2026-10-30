@@ -118,7 +118,7 @@ export const projectMembersApi = {
 export const verificationRunsApi = {
   list: (suiteId) => request(`/api/v1/test-suites/${suiteId}/verification-runs`),
   create: (suiteId, data) => request(`/api/v1/test-suites/${suiteId}/verification-runs`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), timeout: 90000,
   }),
   read: (runId) => request(`/api/v1/verification-runs/${runId}`),
   updateResult: (resultId, data) => request(`/api/v1/verification-results/${resultId}`, {

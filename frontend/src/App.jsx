@@ -1,8 +1,9 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider } from './auth/AuthContext'
 import { useAuth } from './auth/useAuth'
 import { AppShell } from './components/AppShell'
 import { FullPageLoader } from './components/FullPageLoader'
+import { RouteErrorBoundary } from './components/RouteErrorBoundary'
 import { AccessPage } from './pages/AccessPage'
 import { AdminAuditLogsPage } from './pages/admin/AdminAuditLogsPage'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
@@ -48,9 +49,12 @@ function GuestRoute({ children }) {
 }
 
 export default function App() {
+  const location = useLocation()
+
   return (
     <AuthProvider>
-      <Routes>
+      <RouteErrorBoundary key={location.pathname}>
+        <Routes>
         {/* Public & Guest Routes */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
@@ -120,7 +124,8 @@ export default function App() {
 
         {/* Fallback 404 */}
         <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+        </Routes>
+      </RouteErrorBoundary>
     </AuthProvider>
   )
 }

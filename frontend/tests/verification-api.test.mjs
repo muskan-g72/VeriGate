@@ -30,6 +30,7 @@ test('verification calls use existing paths, JSON bodies, and session bearer tok
   ])
   for (const call of calls) assert.equal(call.headers.get('Authorization'), 'Bearer test-token')
   assert.deepEqual(JSON.parse(calls[0].body), { name: 'Regression' })
+  assert.equal(calls[0].timeout, 90000)
   assert.deepEqual(JSON.parse(calls[3].body), { status: 'failed', actual_result: '500', notes: 'Login failed' })
   assert.equal(calls[3].headers.get('Content-Type'), 'application/json')
 })

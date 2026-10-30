@@ -23,8 +23,19 @@ export function LibraryDialog({ kind, item, parentId, parentOptions = [], onClos
   const [pending, setPending] = useState(false)
   const [selectedParentId, setSelectedParentId] = useState(parentId || parentOptions[0]?.id || '')
   const firstInput = useRef(null)
+  const backdropMouseDown = useRef(false)
   useEffect(() => { firstInput.current?.focus() }, [])
   useEffect(() => { const close = (event) => event.key === 'Escape' && onClose(); document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close) }, [onClose])
+
+  function handleBackdropMouseDown(event) {
+    backdropMouseDown.current = event.target === event.currentTarget
+  }
+
+  function handleBackdropMouseUp(event) {
+    const shouldClose = backdropMouseDown.current && event.target === event.currentTarget
+    backdropMouseDown.current = false
+    if (shouldClose) onClose()
+  }
 
   async function submit(event) {
     event.preventDefault()
@@ -115,7 +126,7 @@ export function LibraryDialog({ kind, item, parentId, parentOptions = [], onClos
   }
 
   const title = `${item ? 'Edit' : 'Create'} test ${isCase ? 'case' : 'suite'}`
-  return <div className="dialog-backdrop library-dialog-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="project-dialog library-dialog" role="dialog" aria-modal="true" aria-labelledby="library-dialog-title">
+  return <div className="dialog-backdrop library-dialog-backdrop" onMouseDown={handleBackdropMouseDown} onMouseUp={handleBackdropMouseUp}><section className="project-dialog library-dialog" role="dialog" aria-modal="true" aria-labelledby="library-dialog-title">
     <header><div><p className="eyebrow">Test definition</p><h2 id="library-dialog-title">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close"><X /></button></header>
     <form onSubmit={submit} noValidate>{serverError && <div className="form-alert" role="alert"><strong>Unable to save</strong><span>{serverError}</span></div>}
       <div className="field"><label htmlFor="definition-name">{isCase ? 'Title' : 'Suite name'}</label><input ref={firstInput} id="definition-name" maxLength={isCase ? 160 : 120} value={isCase ? form.title : form.name} disabled={pending} aria-invalid={Boolean(errors.name)} onChange={(event) => setForm({ ...form, [isCase ? 'title' : 'name']: event.target.value })} placeholder={isCase ? 'Valid user can sign in' : 'Authentication'} /><div className={`field-error ${errors.name ? 'is-visible' : ''}`} role="alert">{errors.name}</div></div>

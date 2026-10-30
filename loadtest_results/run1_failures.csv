@@ -1,0 +1,9 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/api/v1/projects,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/projects'),9,2026-10-06T12:18:23Z,2026-10-06T12:18:53Z
+POST,/api/v1/auth/login,HTTPError('502 Server Error: Bad Gateway for url: /api/v1/auth/login'),18,2026-10-06T12:18:17Z,2026-10-06T12:18:17Z
+GET,/api/v1/projects,HTTPError('502 Server Error: Bad Gateway for url: /api/v1/projects'),2,2026-10-06T12:18:17Z,2026-10-06T12:18:17Z
+GET,/api/v1/dashboard/summary,HTTPError('503 Server Error: Service Unavailable for url: /api/v1/dashboard/summary'),3,2026-10-06T12:18:19Z,2026-10-06T12:18:21Z
+GET,/api/v1/auth/me,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/auth/me'),10,2026-10-06T12:18:22Z,2026-10-06T12:18:49Z
+GET,/api/v1/projects,HTTPError('503 Server Error: Service Unavailable for url: /api/v1/projects'),1,2026-10-06T12:18:19Z,2026-10-06T12:18:19Z
+GET,/api/v1/health,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/health'),2,2026-10-06T12:18:24Z,2026-10-06T12:18:49Z
+GET,/api/v1/dashboard/summary,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/dashboard/summary'),11,2026-10-06T12:18:26Z,2026-10-06T12:18:51Z

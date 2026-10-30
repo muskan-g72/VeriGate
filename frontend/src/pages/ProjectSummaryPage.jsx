@@ -136,7 +136,7 @@ export function ProjectSummaryPage() {
           ['Test suites', summary.test_suites],
           ['Test cases', summary.test_cases],
           ['Verification runs', summary.verification_runs],
-          ['Pass rate', `${result.pass_rate}%`],
+          ['Pass rate', `${summary.verification_results.pass_rate}%`],
         ].map(([label, value]) => (
           <article key={label}>
             <span>{label}</span>
@@ -149,7 +149,7 @@ export function ProjectSummaryPage() {
         <article className="report-panel">
           <h3>Verification results</h3>
           <ul className="simple-list">
-            {Object.entries(result)
+            {Object.entries(summary.verification_results)
               .filter(([key]) => key !== 'pass_rate' && key !== 'total')
               .map(([key, value]) => (
                 <li key={key}>

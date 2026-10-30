@@ -1,0 +1,17 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+GET,/api/v1/auth/me,HTTPError('503 Server Error: Service Unavailable for url: /api/v1/auth/me'),1,2026-10-06T12:21:17Z,2026-10-06T12:21:17Z
+GET,/api/v1/projects,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/projects'),211,2026-10-06T12:21:18Z,2026-10-06T12:22:19Z
+GET,/api/v1/projects,HTTPError('502 Server Error: Bad Gateway for url: /api/v1/projects'),11,2026-10-06T12:21:15Z,2026-10-06T12:21:17Z
+GET,/api/v1/dashboard/summary,HTTPError('503 Server Error: Service Unavailable for url: /api/v1/dashboard/summary'),2,2026-10-06T12:21:17Z,2026-10-06T12:21:17Z
+GET,/api/v1/auth/me,HTTPError('401 Client Error: Unauthorized for url: /api/v1/auth/me'),117,2026-10-06T12:22:20Z,2026-10-06T12:23:05Z
+GET,/api/v1/health,HTTPError('502 Server Error: Bad Gateway for url: /api/v1/health'),2,2026-10-06T12:21:16Z,2026-10-06T12:21:16Z
+GET,/api/v1/auth/me,HTTPError('502 Server Error: Bad Gateway for url: /api/v1/auth/me'),6,2026-10-06T12:21:15Z,2026-10-06T12:21:17Z
+GET,/api/v1/projects,HTTPError('401 Client Error: Unauthorized for url: /api/v1/projects'),152,2026-10-06T12:22:20Z,2026-10-06T12:23:04Z
+GET,/api/v1/dashboard/summary,HTTPError('401 Client Error: Unauthorized for url: /api/v1/dashboard/summary'),142,2026-10-06T12:22:20Z,2026-10-06T12:23:04Z
+GET,/api/v1/auth/me,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/auth/me'),154,2026-10-06T12:21:17Z,2026-10-06T12:22:19Z
+GET,/api/v1/dashboard/summary,HTTPError('502 Server Error: Bad Gateway for url: /api/v1/dashboard/summary'),6,2026-10-06T12:21:16Z,2026-10-06T12:21:16Z
+GET,/api/v1/projects,HTTPError('503 Server Error: Service Unavailable for url: /api/v1/projects'),4,2026-10-06T12:21:17Z,2026-10-06T12:21:18Z
+POST,/api/v1/auth/login,CatchResponseError('Login failed with status 502'),20,2026-10-06T12:21:15Z,2026-10-06T12:21:15Z
+GET,/api/v1/health,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/health'),59,2026-10-06T12:21:19Z,2026-10-06T12:22:18Z
+GET,/api/v1/health,HTTPError('503 Server Error: Service Unavailable for url: /api/v1/health'),2,2026-10-06T12:21:17Z,2026-10-06T12:21:17Z
+GET,/api/v1/dashboard/summary,HTTPError('429 Client Error: Too Many Requests for url: /api/v1/dashboard/summary'),186,2026-10-06T12:21:18Z,2026-10-06T12:22:18Z

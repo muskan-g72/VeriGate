@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.playwright_executor import (
     _execute_playwright_steps,
+    _execute_playwright_test_with_timeout,
     execute_playwright_test,
 )
 
@@ -12,8 +13,10 @@ def test_execute_playwright_steps_success() -> None:
         mock_page = AsyncMock()
         mock_page.title.return_value = "Example Domain"
 
+        mock_context = AsyncMock()
+        mock_context.new_page.return_value = mock_page
         mock_browser = AsyncMock()
-        mock_browser.new_page.return_value = mock_page
+        mock_browser.new_context.return_value = mock_context
 
         mock_playwright = AsyncMock()
         mock_playwright.chromium.launch.return_value = mock_browser
@@ -35,6 +38,11 @@ def test_execute_playwright_steps_success() -> None:
         assert result["failure_message"] is None
         assert "Example Domain" in result["actual_result"]
         assert result["screenshot"] is None
+        mock_playwright.chromium.launch.assert_awaited_once_with(
+            headless=True,
+            args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+        )
+        mock_context.close.assert_awaited_once()
         mock_browser.close.assert_awaited_once()
 
     asyncio.run(_run())
@@ -46,8 +54,10 @@ def test_execute_playwright_steps_assertion_failure() -> None:
         mock_page.title.return_value = "Example Domain"
         mock_page.screenshot.return_value = b"fake_screenshot_bytes"
 
+        mock_context = AsyncMock()
+        mock_context.new_page.return_value = mock_page
         mock_browser = AsyncMock()
-        mock_browser.new_page.return_value = mock_page
+        mock_browser.new_context.return_value = mock_context
 
         mock_playwright = AsyncMock()
         mock_playwright.chromium.launch.return_value = mock_browser
@@ -70,6 +80,7 @@ def test_execute_playwright_steps_assertion_failure() -> None:
         assert "Example Domain" in result["actual_result"]
         assert result["screenshot"] is not None
         assert result["stack_trace"] is not None
+        mock_context.close.assert_awaited_once()
         mock_browser.close.assert_awaited_once()
 
     asyncio.run(_run())
@@ -80,8 +91,10 @@ def test_execute_playwright_steps_supports_url_and_text_aliases() -> None:
         mock_page = AsyncMock()
         mock_page.title.return_value = "My Page"
 
+        mock_context = AsyncMock()
+        mock_context.new_page.return_value = mock_page
         mock_browser = AsyncMock()
-        mock_browser.new_page.return_value = mock_page
+        mock_browser.new_context.return_value = mock_context
 
         mock_playwright = AsyncMock()
         mock_playwright.chromium.launch.return_value = mock_browser
@@ -122,6 +135,27 @@ def test_execute_playwright_steps_unsupported_action() -> None:
         result = await _execute_playwright_steps([{"action": "fly_to_moon"}])
         assert result["status"] == "failed"
         assert "Unsupported Playwright action" in result["failure_message"]
+
+    asyncio.run(_run())
+
+
+def test_playwright_execution_timeout_returns_a_failed_result() -> None:
+    async def never_finishes(_steps):
+        await asyncio.Event().wait()
+
+    async def _run():
+        with patch(
+            "app.services.playwright_executor._execute_playwright_steps",
+            side_effect=never_finishes,
+        ), patch(
+            "app.services.playwright_executor.EXECUTION_TIMEOUT_SECONDS",
+            0.01,
+        ):
+            result = await _execute_playwright_test_with_timeout([])
+
+        assert result["status"] == "failed"
+        assert result["actual_result"] == "Test timed out"
+        assert "timed out after 0.01 seconds" in result["failure_message"]
 
     asyncio.run(_run())
 
