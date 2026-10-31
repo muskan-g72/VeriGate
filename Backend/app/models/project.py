@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.models.audit_log import AuditLog
     from app.models.issue import Issue
     from app.models.project_member import ProjectMember
+    from app.models.quality_gate import QualityGate
     from app.models.test_suite import TestSuite
     from app.models.user import User
 
@@ -82,3 +83,4 @@ class Project(Base):
     audit_logs: Mapped[list["AuditLog"]] = relationship(
         back_populates="project",
     )
+    quality_gate: Mapped["QualityGate | None"] = relationship(back_populates="project", uselist=False, cascade="all, delete-orphan")

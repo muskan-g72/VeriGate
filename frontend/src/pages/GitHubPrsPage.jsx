@@ -291,6 +291,7 @@ export function GitHubPrsPage() {
                   </div>
                   <div className="pr-header-meta">
                     <VerificationStatusBadge status={run.status} />
+                    {run.quality_gate_evaluation && <span className={`verification-badge verification-badge--${run.quality_gate_evaluation.outcome}`}>Gate: {run.quality_gate_evaluation.outcome.replace('_', ' ')}</span>}
                     {run.pr_url && (
                       <a
                         href={run.pr_url}

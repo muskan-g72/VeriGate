@@ -9,6 +9,7 @@ from app.api.routes.health import router as health_router
 from app.api.routes.issues import router as issues_router
 from app.api.routes.members import router as members_router
 from app.api.routes.projects import router as projects_router
+from app.api.routes.quality_gates import router as quality_gates_router
 from app.api.routes.reports import router as reports_router
 from app.api.routes.teams import router as teams_router
 from app.api.routes.test_cases import router as test_cases_router
@@ -31,6 +32,7 @@ api_router.include_router(
     projects_router,
     tags=["Projects"],
 )
+api_router.include_router(quality_gates_router, tags=["Quality Gates"])
 
 api_router.include_router(
     members_router,

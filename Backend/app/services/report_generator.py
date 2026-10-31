@@ -256,6 +256,16 @@ async def build_verification_run_report_data(
             if run.created_by
             else "VeriGate User",
         },
+        "quality_gate": (
+            {
+                "outcome": run.quality_gate_evaluation.outcome,
+                "rules_snapshot": run.quality_gate_evaluation.rules_snapshot,
+                "rule_results": run.quality_gate_evaluation.rule_results,
+                "evaluated_at": run.quality_gate_evaluation.evaluated_at.isoformat(),
+            }
+            if run.quality_gate_evaluation
+            else None
+        ),
         "project": {
             "id": str(project.id) if project else None,
             "name": project.name if project else "Project",
@@ -288,6 +298,7 @@ def generate_verification_report_html(report_data: dict[str, Any]) -> str:
     summary = report_data["summary"]
     cases = report_data["test_cases"]
     timeline = report_data["timeline"]
+    quality_gate = report_data.get("quality_gate")
 
     status_class = (
         "status-passed"
@@ -314,6 +325,13 @@ def generate_verification_report_html(report_data: dict[str, Any]) -> str:
         """
         )
     test_cases_table_html = "\n".join(table_rows)
+    gate_html = ""
+    if quality_gate:
+        rows = "".join(
+            f"<tr><td>{html.escape(str(rule.get('rule', '')).replace('_', ' '))}</td><td>{html.escape(str(rule.get('measured_value', '—')))}</td><td>{html.escape(str(rule.get('threshold', '—')))}</td><td>{'PASSED' if rule.get('passed') else 'FAILED'}</td><td>{html.escape(str(rule.get('reason', '')))}</td></tr>"
+            for rule in quality_gate.get("rule_results", [])
+        ) or "<tr><td colspan='5'>No quality gate rules were enabled.</td></tr>"
+        gate_html = f"<h3 class='section-heading'>Quality Gate: {html.escape(quality_gate['outcome'].replace('_', ' ').upper())}</h3><table class='report-table'><thead><tr><th>Rule</th><th>Measured</th><th>Threshold</th><th>Result</th><th>Reason</th></tr></thead><tbody>{rows}</tbody></table>"
 
     # Build Failure & AI Detective Section
     failed_cases = [c for c in cases if c["status"] == "failed"]
@@ -887,6 +905,8 @@ def generate_verification_report_html(report_data: dict[str, Any]) -> str:
       <strong>{summary['total_duration'] if summary['total_duration'] is not None else '—'}{'s' if summary['total_duration'] is not None else ''}</strong>
     </div>
   </div>
+
+  {gate_html}
 
   <h3 class="section-heading">1. Verification Execution Record</h3>
   <table class="report-table">

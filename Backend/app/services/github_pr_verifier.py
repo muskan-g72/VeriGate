@@ -14,6 +14,7 @@ from app.services.audit_service import record_audit_event
 from app.services.automated_verification import execute_automated_results
 from app.services.failure_analysis_service import analyze_failed_result
 from app.services.github_service import post_github_commit_status
+from app.services.quality_gate_service import evaluate_completed_run
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,10 @@ async def run_github_pr_verification(
         if not automated_test_cases:
             verification_run.status = "completed"
             verification_run.completed_at = datetime.now(UTC)
+            try:
+                evaluate_completed_run(database_session, verification_run)
+            except Exception:
+                logger.exception("Quality gate evaluation failed for empty PR verification %s.", verification_run.id)
             if project_id:
                 record_audit_event(
                     database_session,
@@ -162,6 +167,12 @@ async def run_github_pr_verification(
         verification_run.status = "completed"
         verification_run.completed_at = completion_time
 
+        try:
+            gate_evaluation = evaluate_completed_run(database_session, verification_run)
+        except Exception:
+            logger.exception("Quality gate evaluation failed for PR verification %s.", verification_run.id)
+            gate_evaluation = None
+
         # Record audit log
         if project_id:
             try:
@@ -206,6 +217,14 @@ async def run_github_pr_verification(
                 if not has_failures
                 else f"VeriGate: {failed} failed of {total} tests"
             )
+            if gate_evaluation and gate_evaluation.outcome in {"passed", "failed"}:
+                state = "success" if gate_evaluation.outcome == "passed" else "failure"
+                failed_rules = [rule["rule"] for rule in gate_evaluation.rule_results if not rule.get("passed")]
+                desc = (
+                    "VeriGate quality gate passed"
+                    if gate_evaluation.outcome == "passed"
+                    else f"VeriGate quality gate failed: {', '.join(failed_rules)}"
+                )[:140]
             target_url = f"{settings.frontend_url.rstrip('/')}/app/verification-runs/{verification_run.id}"
 
             await post_github_commit_status(

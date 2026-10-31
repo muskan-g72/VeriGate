@@ -38,6 +38,7 @@ from app.services.failure_analysis_service import (
     analyze_failed_result,
     analyze_verification_run,
 )
+from app.services.quality_gate_service import evaluate_completed_run
 
 router = APIRouter()
 
@@ -202,6 +203,8 @@ async def create_verification_run(
         user_id=current_user.id,
         project_id=test_suite.project_id,
     )
+    if verification_run.status == "completed":
+        evaluate_completed_run(database_session, verification_run)
 
     safe_record_audit_event(
         database_session,
@@ -327,6 +330,8 @@ def update_verification_result(
         database_session=database_session,
     )
     sync_verification_run_status(verification_run, now)
+    if verification_run.status == "completed":
+        evaluate_completed_run(database_session, verification_run)
 
     if (
         previous_status != verification_result.status

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { dashboardApi, githubApi } from '../api/client'
+import { dashboardApi, githubApi, qualityGatesApi } from '../api/client'
 
 export function ProjectSummaryPage() {
   const { projectId } = useParams()
@@ -24,6 +24,10 @@ export function ProjectSummaryPage() {
   const [savingGithub, setSavingGithub] = useState(false)
   const [githubSuccess, setGithubSuccess] = useState('')
   const [githubError, setGithubError] = useState('')
+  const [qualityGate, setQualityGate] = useState(null)
+  const [gateDraft, setGateDraft] = useState(null)
+  const [gateError, setGateError] = useState('')
+  const [savingGate, setSavingGate] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -47,6 +51,10 @@ export function ProjectSummaryPage() {
           setGithubEnabled(cfg.github_verification_enabled ?? true)
         }
       })
+
+    qualityGatesApi.get(projectId).then((gate) => {
+      if (active) { setQualityGate(gate); setGateDraft(gate || { enabled: true, min_pass_rate_enabled: false, min_pass_rate: 80, critical_tests_enabled: false, critical_priorities: ['critical'], critical_issues_enabled: false, min_executed_tests_enabled: false, min_executed_tests: 1, treat_blocked_as_failure: true }) }
+    }).catch(() => { if (active) setGateError('Unable to load quality gate settings.') })
       .catch(() => {
         // Silently tolerate if config load fails or not yet supported
       })
@@ -85,6 +93,14 @@ export function ProjectSummaryPage() {
     } finally {
       setSavingGithub(false)
     }
+  }
+
+  async function saveQualityGate(e) {
+    e.preventDefault(); if (!gateDraft) return
+    setSavingGate(true); setGateError('')
+    try { const saved = await qualityGatesApi.update(projectId, { ...gateDraft, min_pass_rate: gateDraft.min_pass_rate_enabled ? Number(gateDraft.min_pass_rate) : null, min_executed_tests: Number(gateDraft.min_executed_tests || 1) }); setQualityGate(saved); setGateDraft(saved) }
+    catch (err) { setGateError(err.status === 403 ? 'You have read-only access to this quality gate.' : err.message) }
+    finally { setSavingGate(false) }
   }
 
   if (error) {
@@ -177,6 +193,25 @@ export function ProjectSummaryPage() {
               Latest run: {summary.latest_run.name} ({summary.latest_run.status})
             </p>
           )}
+        </article>
+      </section>
+
+      <section className="github-config-section">
+        <article className="report-panel github-panel">
+          <h3>Quality gate</h3>
+          <p className="panel-description">Set release criteria evaluated whenever a verification run completes.</p>
+          {!gateDraft ? <p>Loading quality gate…</p> : <form onSubmit={saveQualityGate} className="github-config-form">
+            <label className="checkbox-label"><input type="checkbox" checked={gateDraft.enabled} onChange={(e) => setGateDraft({ ...gateDraft, enabled: e.target.checked })} /> Enable quality gate</label>
+            <label className="checkbox-label"><input type="checkbox" checked={gateDraft.min_pass_rate_enabled} onChange={(e) => setGateDraft({ ...gateDraft, min_pass_rate_enabled: e.target.checked })} /> Minimum pass rate</label>
+            {gateDraft.min_pass_rate_enabled && <input aria-label="Minimum pass rate" type="number" min="0" max="100" value={gateDraft.min_pass_rate ?? ''} onChange={(e) => setGateDraft({ ...gateDraft, min_pass_rate: e.target.value })} />}
+            <label className="checkbox-label"><input type="checkbox" checked={gateDraft.critical_tests_enabled} onChange={(e) => setGateDraft({ ...gateDraft, critical_tests_enabled: e.target.checked })} /> No failed critical tests</label>
+            <label className="checkbox-label"><input type="checkbox" checked={gateDraft.critical_issues_enabled} onChange={(e) => setGateDraft({ ...gateDraft, critical_issues_enabled: e.target.checked })} /> No open critical issues</label>
+            <label className="checkbox-label"><input type="checkbox" checked={gateDraft.min_executed_tests_enabled} onChange={(e) => setGateDraft({ ...gateDraft, min_executed_tests_enabled: e.target.checked })} /> Minimum executed tests</label>
+            {gateDraft.min_executed_tests_enabled && <input aria-label="Minimum executed tests" type="number" min="1" value={gateDraft.min_executed_tests ?? 1} onChange={(e) => setGateDraft({ ...gateDraft, min_executed_tests: e.target.value })} />}
+            <label className="checkbox-label"><input type="checkbox" checked={gateDraft.treat_blocked_as_failure} onChange={(e) => setGateDraft({ ...gateDraft, treat_blocked_as_failure: e.target.checked })} /> Treat blocked as failure</label>
+            {gateError && <div className="form-alert" role="alert">{gateError}</div>}
+            <button className="primary-button" disabled={savingGate}>{savingGate ? 'Saving…' : qualityGate ? 'Save quality gate' : 'Create quality gate'}</button>
+          </form>}
         </article>
       </section>
 

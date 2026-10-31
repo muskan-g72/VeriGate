@@ -123,6 +123,7 @@ export const verificationRunsApi = {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), timeout: 90000,
   }),
   read: (runId) => request(`/api/v1/verification-runs/${runId}`),
+  qualityGate: (runId) => request(`/api/v1/verification-runs/${runId}/quality-gate`),
   updateResult: (resultId, data) => request(`/api/v1/verification-results/${resultId}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
   }),
@@ -132,6 +133,11 @@ export const verificationRunsApi = {
   analyzeResult: (resultId) => request(`/api/v1/verification-results/${resultId}/analyze`, {
     method: 'POST',
   }),
+}
+
+export const qualityGatesApi = {
+  get: (projectId) => request(`/api/v1/projects/${projectId}/quality-gate`),
+  update: (projectId, data) => request(`/api/v1/projects/${projectId}/quality-gate`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
 }
 
 export const testCasesApi = {

@@ -61,7 +61,7 @@ export function VerificationHistory({ suiteId }) {
     {status === 'loading' && <p role="status">Loading verification history...</p>}
     {status === 'error' && <div className="form-alert" role="alert"><span>{error}</span><button className="secondary-button" onClick={() => { setStatus('loading'); setAttempt((value) => value + 1) }}>Retry</button></div>}
     {status === 'ready' && !runs.length && <p>No previous runs. Start verification to execute this suite.</p>}
-    {status === 'ready' && runs.map((run) => <article className="verification-history-row" key={run.id}><div><h4>{run.name}</h4><p>{formatRunDate(run.created_at)} · {run.total_cases - run.pending_count} / {run.total_cases} completed</p></div><VerificationStatusBadge status={run.status} /><Link className="library-link-button" aria-label={`Open Run: ${run.name}`} to={`/app/verification-runs/${run.id}`}>Open Run</Link></article>)}
+    {status === 'ready' && runs.map((run) => <article className="verification-history-row" key={run.id}><div><h4>{run.name}</h4><p>{formatRunDate(run.created_at)} · {run.total_cases - run.pending_count} / {run.total_cases} completed</p></div><VerificationStatusBadge status={run.status} />{run.quality_gate_evaluation && <span className={`verification-badge verification-badge--${run.quality_gate_evaluation.outcome}`}>Gate: {run.quality_gate_evaluation.outcome.replace('_', ' ')}</span>}<Link className="library-link-button" aria-label={`Open Run: ${run.name}`} to={`/app/verification-runs/${run.id}`}>Open Run</Link></article>)}
   </section>
 }
 

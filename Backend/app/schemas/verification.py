@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.evidence import EvidenceResponse
+from app.schemas.quality_gate import QualityGateEvaluationRead
 
 RunStatus = Literal["pending", "in_progress", "completed"]
 ResultStatus = Literal["pending", "running", "passed", "failed", "blocked", "skipped"]
@@ -65,6 +66,7 @@ class VerificationRunRead(BaseModel):
     failed_count: int
     blocked_count: int
     skipped_count: int
+    quality_gate_evaluation: QualityGateEvaluationRead | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

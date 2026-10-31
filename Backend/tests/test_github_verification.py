@@ -474,7 +474,10 @@ def test_pr_webhook_skips_projects_without_active_automated_cases(
         "VeriGate: no active automated test suite configured for this project"
     )
     audit = db_session.scalar(
-        select(AuditLog).where(AuditLog.project_id == uuid.UUID(project_id))
+        select(AuditLog).where(
+            AuditLog.project_id == uuid.UUID(project_id),
+            AuditLog.action == "skipped_github_pr",
+        )
     )
     assert audit is not None
     assert audit.action == "skipped_github_pr"
