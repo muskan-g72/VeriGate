@@ -77,6 +77,9 @@ class VerificationRun(Base):
     comment_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
     comment_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     comment_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    commit_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    commit_status_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    commit_status_error: Mapped[str | None] = mapped_column(String(500), nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(
         String(200),
         unique=True,

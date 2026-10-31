@@ -19,22 +19,28 @@ def sanitize_report_text(text: str | None) -> str | None:
     if not text:
         return text
 
-    # Redact Bearer tokens
-    sanitized = re.sub(
-        r"(?i)(bearer\s+)[A-Za-z0-9\-\._~+/]+=*",
-        r"\1[REDACTED_TOKEN]",
-        text,
-    )
-    # Redact JWT tokens (3 dot-separated base64 chunks)
+    # Redact JWTs before generic authorization values.  \S+ deliberately
+    # includes terminal punctuation so it cannot leak after a token.
     sanitized = re.sub(
         r"ey[A-Za-z0-9_-]{8,}\.ey[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+",
         "[REDACTED_JWT]",
+        text,
+    )
+    sanitized = re.sub(
+        r"(?i)(authorization\s*:\s*bearer\s+)\S+",
+        r"\1[REDACTED_TOKEN]",
+        sanitized,
+    )
+    sanitized = re.sub(r"(?i)(bearer\s+)\S+", r"\1[REDACTED_TOKEN]", sanitized)
+    sanitized = re.sub(
+        r"\b(?:ghp|gho|ghs)_[A-Za-z0-9_]+\b|\bgithub_pat_[A-Za-z0-9_]+\b",
+        "[REDACTED]",
         sanitized,
     )
     # Redact common credential/key assignments
     sanitized = re.sub(
-        r'(?i)(["\']?(?:password|passwd|secret|api[_-]?key|access[_-]?token)["\']?\s*[:=]\s*["\']?)([^"\'\s,;]+)(["\']?)',
-        r"\1[REDACTED]\3",
+        r"(?i)((?:password|passwd|secret|token|api[_-]?key|access[_-]?token)\s*[:=]\s*)\S+",
+        r"\1[REDACTED]",
         sanitized,
     )
     return sanitized

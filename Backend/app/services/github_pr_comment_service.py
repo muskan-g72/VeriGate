@@ -18,6 +18,11 @@ def _clean(value: object, limit: int = 500) -> str:
     text = sanitize_report_text(str(value or "")) or ""
     text = re.sub(r"[\x00-\x1f\x7f]", " ", text)
     text = re.sub(r"([`*_{}\[\]()<>#+!|])", r"\\\1", text)
+    text = re.sub(
+        r"\\\[(REDACTED(?:\\_TOKEN|\\_JWT)?)\\\]",
+        lambda match: f"[{match.group(1).replace(r'\_', '_')}]",
+        text,
+    )
     return text.strip()[:limit]
 
 
@@ -78,6 +83,10 @@ async def publish_pr_comment(database_session: Session, run: VerificationRun, pr
             if found:
                 record.github_comment_id = found.get("id")
                 response, status, error = await update_github_pr_comment(run.pr_repository, record.github_comment_id, body)
+            else:
+                response, status, error = await create_github_pr_comment(
+                    run.pr_repository, run.pr_number, body
+                )
     else:
         found, _, _ = await find_github_pr_comment(run.pr_repository, run.pr_number, marker)
         if found:
@@ -92,7 +101,10 @@ async def publish_pr_comment(database_session: Session, run: VerificationRun, pr
         record.last_error = None
         run.comment_status, run.comment_url, run.comment_error = record.last_status, record.comment_url, None
     else:
-        record.last_status, record.last_error = "failed", _clean(error, 400)
+        record.last_status = "failed"
+        record.last_error = (
+            sanitize_report_text(error) or "GitHub PR comment request failed"
+        )[:400]
         run.comment_status, run.comment_error = "failed", record.last_error
     record.last_run_id = run.id
     database_session.commit()

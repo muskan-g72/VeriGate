@@ -275,6 +275,13 @@ export function GitHubPrsPage() {
           {filteredRuns.map((run) => {
             const hasFailures = run.failed_count > 0
             const isFinished = run.status === 'completed'
+            const commitStatus = run.commit_status || (isFinished ? 'disabled' : 'pending')
+            const commentStatus = run.comment_status || (isFinished ? 'disabled' : 'pending')
+            const commitUrl = run.commit_status_url || (
+              run.pr_repository && run.pr_commit_sha
+                ? `https://github.com/${run.pr_repository}/commit/${run.pr_commit_sha}`
+                : null
+            )
 
             return (
               <article
@@ -292,8 +299,10 @@ export function GitHubPrsPage() {
                   <div className="pr-header-meta">
                     <VerificationStatusBadge status={run.status} />
                     {run.quality_gate_evaluation && <span className={`verification-badge verification-badge--${run.quality_gate_evaluation.outcome}`}>Gate: {run.quality_gate_evaluation.outcome.replace('_', ' ')}</span>}
-                    {run.comment_status && <span className={`verification-badge verification-badge--${run.comment_status === 'failed' ? 'failed' : 'passed'}`} title={run.comment_error || ''}>Comment: {run.comment_status}</span>}
+                    <span className={`verification-badge verification-badge--${commitStatus === 'failed' ? 'failed' : commitStatus === 'posted' ? 'passed' : 'pending'}`}>Status: {commitStatus}</span>
+                    <span className={`verification-badge verification-badge--${commentStatus === 'failed' ? 'failed' : commentStatus === 'posted' || commentStatus === 'updated' ? 'passed' : 'pending'}`}>Comment: {commentStatus}</span>
                     {run.comment_url && <a className="github-ext-link" href={run.comment_url} target="_blank" rel="noopener noreferrer">Comment</a>}
+                    {commitStatus === 'posted' && commitUrl && <a className="github-ext-link" href={commitUrl} target="_blank" rel="noopener noreferrer">Commit</a>}
                     {run.pr_url && (
                       <a
                         href={run.pr_url}
@@ -370,6 +379,13 @@ export function GitHubPrsPage() {
                     </Link>
                   </div>
                 </div>
+                {(run.commit_status_error || run.comment_error) && (
+                  <details className="verification-publish-details">
+                    <summary>Publishing details</summary>
+                    {run.commit_status_error && <p><strong>Commit status:</strong> {run.commit_status_error}</p>}
+                    {run.comment_error && <p><strong>PR comment:</strong> {run.comment_error}</p>}
+                  </details>
+                )}
               </article>
             )
           })}
