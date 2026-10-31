@@ -22,6 +22,43 @@ from app.services.quality_gate_service import evaluate_completed_run
 logger = logging.getLogger(__name__)
 
 
+async def publish_commit_status(
+    database_session: Session,
+    verification_run: VerificationRun,
+    *,
+    state: str,
+    description: str,
+    target_url: str,
+    successful_status: str,
+) -> None:
+    """Publish and persist an outcome without interrupting comment publication."""
+    try:
+        result = await post_github_commit_status(
+            repo=verification_run.pr_repository,
+            commit_sha=verification_run.pr_commit_sha,
+            state=state,
+            description=description,
+            target_url=target_url,
+            return_details=True,
+        )
+        if isinstance(result, tuple):
+            published, _status_code, error = result
+        else:  # Preserve compatibility with mocked/legacy boolean callers.
+            published, error = bool(result), "GitHub commit status could not be published"
+    except Exception:
+        published, error = False, "GitHub commit status request failed"
+
+    verification_run.commit_status = successful_status if published else "failed"
+    verification_run.commit_status_url = (
+        f"https://github.com/{verification_run.pr_repository}/commit/"
+        f"{verification_run.pr_commit_sha}"
+        if published
+        else None
+    )
+    verification_run.commit_status_error = None if published else error[:500]
+    database_session.commit()
+
+
 async def run_github_pr_verification(
     verification_run_id: uuid.UUID,
     session: Session | None = None,
@@ -62,16 +99,23 @@ async def run_github_pr_verification(
         suite = verification_run.test_suite
         project_id = suite.project_id if suite else None
         user_id = verification_run.created_by_id
+        project = database_session.get(Project, project_id) if project_id else None
+        verification_run.comment_status = (
+            "pending" if project and project.pr_comments_enabled else "disabled"
+        )
+        verification_run.commit_status = "pending"
+        database_session.commit()
 
         # Post initial pending status to GitHub
         if verification_run.pr_repository and verification_run.pr_commit_sha:
             target_url = f"{settings.frontend_url.rstrip('/')}/app/verification-runs/{verification_run.id}"
-            await post_github_commit_status(
-                repo=verification_run.pr_repository,
-                commit_sha=verification_run.pr_commit_sha,
+            await publish_commit_status(
+                database_session,
+                verification_run,
                 state="pending",
                 description="VeriGate automated verification running...",
                 target_url=target_url,
+                successful_status="pending",
             )
 
         # Retrieve active test cases
@@ -234,23 +278,28 @@ async def run_github_pr_verification(
                 )[:140]
             target_url = f"{settings.frontend_url.rstrip('/')}/app/verification-runs/{verification_run.id}"
 
-            await post_github_commit_status(
-                repo=verification_run.pr_repository,
-                commit_sha=verification_run.pr_commit_sha,
+            await publish_commit_status(
+                database_session,
+                verification_run,
                 state=state,
                 description=desc,
                 target_url=target_url,
+                successful_status="posted",
             )
 
         # A comment is an additive artifact; it is always attempted after the final
         # commit status and is not allowed to affect run completion.
         if project_id:
-            project = database_session.get(Project, project_id)
             if project:
                 try:
                     await publish_pr_comment(database_session, verification_run, project, comment_analyses)
                 except Exception:
-                    logger.exception("PR comment publication failed for run %s", verification_run.id)
+                    database_session.rollback()
+                    verification_run = database_session.get(VerificationRun, verification_run.id)
+                    verification_run.comment_status = "failed"
+                    verification_run.comment_error = "GitHub PR comment request failed"
+                    database_session.commit()
+                    logger.error("PR comment publication failed for run %s", verification_run.id)
 
         logger.info(
             f"PR verification {verification_run.id} finished successfully: {verification_run.passed_count}/{verification_run.total_cases} passed."

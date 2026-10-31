@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
+const prsPageSource = await readFile(new URL('../src/pages/GitHubPrsPage.jsx', import.meta.url), 'utf8')
+
 const source = (await readFile(new URL('../src/api/client.js', import.meta.url), 'utf8')).replace(/import\.meta\.env\.VITE_API_(URL|BASE_URL)/, '"http://verigate.test"')
 const { githubApi, sessionStore, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 const storage = new Map()
@@ -134,4 +136,13 @@ test('githubApi handles API error responses cleanly', async () => {
       return true
     }
   )
+})
+
+test('PR verification UI exposes commit and comment publication details', () => {
+  for (const field of ['commit_status', 'commit_status_url', 'commit_status_error', 'comment_status', 'comment_url', 'comment_error']) {
+    assert.match(prsPageSource, new RegExp(field))
+  }
+  assert.match(prsPageSource, /Publishing details/)
+  assert.match(prsPageSource, />Commit</)
+  assert.match(prsPageSource, />Comment</)
 })

@@ -54,7 +54,8 @@ def test_verify_github_signature_unit():
         assert verify_github_signature(payload, env_sig) is True
 
 
-def test_post_github_commit_status_graceful_handling():
+def test_post_github_commit_status_graceful_handling(monkeypatch):
+    monkeypatch.setattr("app.services.github_service.settings.github_token", None)
     # Without token
     res = asyncio.run(
         post_github_commit_status(
@@ -67,6 +68,39 @@ def test_post_github_commit_status_graceful_handling():
         )
     )
     assert res is False
+
+
+@pytest.mark.parametrize("status_code", [401, 403, 404, 422, 429])
+def test_commit_status_preserves_github_http_failure(monkeypatch, status_code):
+    class Response:
+        text = '{"message":"write rejected"}'
+
+        def __init__(self, code):
+            self.status_code = code
+
+    class Client:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def post(self, *_args, **_kwargs):
+            return Response(status_code)
+
+    monkeypatch.setattr("app.services.github_service.httpx.AsyncClient", Client)
+    result = asyncio.run(
+        post_github_commit_status(
+            "owner/repo", "abc123", "success", "passed",
+            token="fake-token", return_details=True,
+        )
+    )
+    assert result[0] is False
+    assert result[1] == status_code
+    assert str(status_code) in result[2]
 
 
 def test_github_webhook_ping(client: TestClient):

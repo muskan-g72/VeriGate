@@ -134,7 +134,9 @@ async def github_webhook(
 
     action = payload.get("action")
     pr_data = payload.get("pull_request") or {}
-    pr_number = pr_data.get("number")
+    # GitHub's documented pull_request payload puts `number` at the top level;
+    # retain the nested fallback for older/local payload fixtures.
+    pr_number = payload.get("number") or pr_data.get("number")
 
     # Safe structured logging without secrets, credentials, or tokens
     logger.info(

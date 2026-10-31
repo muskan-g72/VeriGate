@@ -7,6 +7,7 @@ from typing import Any
 import httpx
 
 from app.core.config import settings
+from app.services.report_generator import sanitize_report_text
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +26,15 @@ def _headers(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"}
 
 
-async def post_github_commit_status(repo: str, commit_sha: str, state: str, description: str, target_url: str | None = None, context: str = "verigate/verification", token: str | None = None) -> bool:
+def _safe_error(message: object, limit: int = 400) -> str:
+    return (sanitize_report_text(str(message or "")) or "GitHub request failed")[:limit]
+
+
+async def post_github_commit_status(repo: str, commit_sha: str, state: str, description: str, target_url: str | None = None, context: str = "verigate/verification", token: str | None = None, return_details: bool = False) -> bool | tuple[bool, int, str]:
     github_token = token or settings.github_token
     if not github_token or not repo or not commit_sha:
-        return False
+        result = (False, 0, "GITHUB_TOKEN is not configured" if not github_token else "Repository or commit SHA is missing")
+        return result if return_details else False
     payload: dict[str, Any] = {"state": state, "description": (description or "")[:140], "context": context}
     if target_url:
         payload["target_url"] = target_url
@@ -36,11 +42,16 @@ async def post_github_commit_status(repo: str, commit_sha: str, state: str, desc
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(f"{settings.github_api_url.rstrip('/')}/repos/{repo}/statuses/{commit_sha}", json=payload, headers=_headers(github_token))
         if response.status_code in {200, 201}:
-            return True
-        logger.warning("GitHub status update returned %s: %s", response.status_code, response.text[:200])
+            result = (True, response.status_code, "")
+            return result if return_details else True
+        error = _safe_error(f"GitHub returned {response.status_code}: {response.text}")
+        logger.warning("GitHub status update returned %s", response.status_code)
     except Exception as exc:
-        logger.warning("Failed to post GitHub commit status: %s", exc)
-    return False
+        error = _safe_error(exc)
+        logger.warning("Failed to post GitHub commit status")
+        response = None
+    result = (False, response.status_code if response is not None else 0, error)
+    return result if return_details else False
 
 
 async def _comment_request(method: str, url: str, payload: dict | None = None, retries: int = 1) -> tuple[Any | None, int, str]:
@@ -56,12 +67,14 @@ async def _comment_request(method: str, url: str, payload: dict | None = None, r
             if response.status_code >= 500 and attempt < retries:
                 await asyncio.sleep(.25)
                 continue
-            return None, response.status_code, f"GitHub returned {response.status_code}: {response.text[:180]}"
+            return None, response.status_code, _safe_error(
+                f"GitHub returned {response.status_code}: {response.text}"
+            )
         except Exception as exc:
             if attempt < retries:
                 await asyncio.sleep(.25)
                 continue
-            return None, 0, str(exc)
+            return None, 0, _safe_error(exc)
     return None, 0, "GitHub comment request failed"
 
 

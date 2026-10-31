@@ -60,6 +60,9 @@ class VerificationRunRead(BaseModel):
     comment_status: str | None = None
     comment_url: str | None = None
     comment_error: str | None = None
+    commit_status: str | None = None
+    commit_status_url: str | None = None
+    commit_status_error: str | None = None
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime
