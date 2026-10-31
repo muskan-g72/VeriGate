@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
-import { ExternalLink, FileText, GitBranch, GitCommit, GitPullRequest, LoaderCircle } from 'lucide-react'
+import { CheckCircle2, CircleMinus, ExternalLink, FileText, GitBranch, GitCommit, GitPullRequest, LoaderCircle, XCircle } from 'lucide-react'
 import { projectsApi, reportsApi, testCasesApi, testSuitesApi, verificationRunsApi } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { formatRunDate } from '../verification'
@@ -111,7 +111,7 @@ function VerificationRun({ runId }) {
     {error ? <div className="projects-state projects-state--error" role="alert"><p>{error}</p><button onClick={() => { setError(''); setAttempt((value) => value + 1) }}>Retry</button></div> : !run ? <div className="projects-state" role="status">Loading verification run...</div> : <>
       <section className="verification-summary"><div className="verification-back-links"><Link className="library-link-button" to={back}>Back to Test Library</Link><Link className="secondary-button" to={`/app/runs${typeof state?.runsSearch === 'string' && state.runsSearch ? `?${state.runsSearch}` : ''}`}>Back to Runs</Link><button type="button" className="secondary-button report-download-btn" disabled={generatingReport} onClick={handleDownloadReport} title="Generate and download official Proof of Verification PDF report">{generatingReport ? <LoaderCircle size={15} className="spin" /> : <FileText size={15} />}<span>{generatingReport ? 'Generating Report...' : 'Proof of Verification Report'}</span></button></div><p className="eyebrow">{project?.name} / {suite?.name}</p><div className="verification-title"><h2>{run.name}</h2><VerificationStatusBadge status={run.status} /></div>
         <div className="verification-dates"><span>Created: {formatRunDate(run.created_at)}</span>{run.started_at && <span>Started: {formatRunDate(run.started_at)}</span>}{run.completed_at && <span>Completed: {formatRunDate(run.completed_at)}</span>}</div>
-        {run.quality_gate_evaluation && <section className="report-panel" style={{ marginTop: '1rem' }}><h3>Quality gate <span className={`verification-badge verification-badge--${run.quality_gate_evaluation.outcome}`}>{run.quality_gate_evaluation.outcome.replace('_', ' ')}</span></h3>{run.quality_gate_evaluation.rule_results?.length ? <table><thead><tr><th>Rule</th><th>Measured</th><th>Threshold</th><th>Result</th><th>Reason</th></tr></thead><tbody>{run.quality_gate_evaluation.rule_results.map((rule) => <tr key={rule.rule}><td>{rule.rule.replaceAll('_', ' ')}</td><td>{String(rule.measured_value)}</td><td>{String(rule.threshold)}</td><td>{rule.passed ? 'Passed' : 'Failed'}</td><td>{rule.reason}</td></tr>)}</tbody></table> : <p>No quality gate rules were enabled for this run.</p>}</section>}
+        {run.quality_gate_evaluation && <QualityGateResult evaluation={run.quality_gate_evaluation} />}
         {run.trigger_source === 'github_pr' && (
           <div className="github-pr-banner">
             <div className="pr-banner-left">
@@ -146,5 +146,24 @@ function VerificationRun({ runId }) {
       <section className="verification-results" aria-label="Test execution results">{run.results.length === 0 && <p>This run has no results.</p>}{run.results.map((result) => <VerificationResultCard key={result.id} result={result} testCase={cases.find((item) => item.id === result.test_case_id)} saving={savingId === result.id} disabled={Boolean(savingId)} onSave={saveResult} />)}</section>
     </>}
   </main>
+}
+
+const gateRuleLabels = {
+  min_pass_rate: 'Minimum pass rate',
+  no_failed_critical_tests: 'No failed critical tests',
+  no_open_critical_issues: 'No open critical issues',
+  min_executed_tests: 'Minimum executed tests',
+}
+
+function QualityGateResult({ evaluation }) {
+  const rules = evaluation.rule_results || []
+  const failed = rules.filter((rule) => !rule.passed).length
+  const outcome = evaluation.outcome || 'not_configured'
+  const OutcomeIcon = outcome === 'passed' ? CheckCircle2 : outcome === 'failed' ? XCircle : CircleMinus
+  const measure = (rule, value) => `${value ?? '—'}${rule.rule === 'min_pass_rate' && value !== null && value !== undefined ? '%' : ''}`
+  return <section className="report-panel quality-gate-result" aria-label="Quality gate result">
+    <div className="quality-gate-result__header"><div><p className="eyebrow">Release criteria</p><h3>Quality gate</h3><p>{rules.length ? `${failed} of ${rules.length} rule${rules.length === 1 ? '' : 's'} failed` : 'No quality gate rules were enabled for this run.'}</p></div><span className={`verification-badge verification-badge--${outcome}`}><OutcomeIcon aria-hidden="true" />{outcome.replaceAll('_', ' ')}</span></div>
+    {rules.length > 0 && <div className="quality-gate-table-wrap"><table className="quality-gate-table"><thead><tr><th>Rule</th><th>Measured</th><th>Threshold</th><th>Result</th><th>Reason</th></tr></thead><tbody>{rules.map((rule) => { const Icon = rule.passed ? CheckCircle2 : XCircle; return <tr key={rule.rule}><td>{gateRuleLabels[rule.rule] || rule.rule.replaceAll('_', ' ')}</td><td className="quality-gate-number">{measure(rule, rule.measured_value)}</td><td className="quality-gate-number">{measure(rule, rule.threshold)}</td><td><span className={`quality-gate-row-result quality-gate-row-result--${rule.passed ? 'passed' : 'failed'}`}><Icon aria-hidden="true" />{rule.passed ? 'Passed' : 'Failed'}</span></td><td className="quality-gate-reason">{rule.reason || 'No reason provided.'}</td></tr> })}</tbody></table></div>}
+  </section>
 }
 

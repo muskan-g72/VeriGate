@@ -45,6 +45,19 @@ router = APIRouter()
 DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
+def safe_evaluate_completed_run(
+    database_session: Session, verification_run: VerificationRun
+) -> None:
+    """A gate is advisory: evaluation failures must not interrupt a completed run."""
+    try:
+        # Keep evaluation writes in a savepoint so a bad gate cannot roll back the
+        # run/result updates that caused completion.
+        with database_session.begin_nested():
+            evaluate_completed_run(database_session, verification_run)
+    except Exception:
+        pass
+
+
 def get_owned_verification_run(
     verification_run_id: uuid.UUID,
     owner_id: uuid.UUID,
@@ -204,7 +217,7 @@ async def create_verification_run(
         project_id=test_suite.project_id,
     )
     if verification_run.status == "completed":
-        evaluate_completed_run(database_session, verification_run)
+        safe_evaluate_completed_run(database_session, verification_run)
 
     safe_record_audit_event(
         database_session,
@@ -331,7 +344,7 @@ def update_verification_result(
     )
     sync_verification_run_status(verification_run, now)
     if verification_run.status == "completed":
-        evaluate_completed_run(database_session, verification_run)
+        safe_evaluate_completed_run(database_session, verification_run)
 
     if (
         previous_status != verification_result.status

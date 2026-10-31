@@ -1,6 +1,10 @@
 from types import SimpleNamespace
 
+import pytest
+from pydantic import ValidationError
+
 from app.models.quality_gate import QualityGate
+from app.schemas.quality_gate import QualityGateUpdate
 from app.services.quality_gate_service import evaluate_rules
 
 
@@ -34,3 +38,14 @@ def test_minimum_execution_open_issues_and_all_disabled():
     assert evaluate_rules(gate(min_executed_tests_enabled=True, min_executed_tests=1), [], 0)[0] == "failed"
     assert evaluate_rules(gate(critical_issues_enabled=True), [result("passed")], 1)[0] == "failed"
     assert evaluate_rules(gate(), [result("failed")], 5) == ("not_configured", [])
+
+
+@pytest.mark.parametrize("payload", [
+    {"min_pass_rate_enabled": True, "min_pass_rate": -0.01},
+    {"min_pass_rate_enabled": True, "min_pass_rate": 100.01},
+    {"min_executed_tests_enabled": True, "min_executed_tests": -1},
+    {"min_executed_tests_enabled": True, "min_executed_tests": 1.5},
+])
+def test_quality_gate_threshold_validation_rejects_invalid_values(payload):
+    with pytest.raises(ValidationError):
+        QualityGateUpdate(**payload)

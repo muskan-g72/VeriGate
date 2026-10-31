@@ -89,7 +89,7 @@ function RunCard({ run, runsSearch }) {
   const progress = runProgress(run)
   const outcomes = ['passed', 'failed', 'blocked', 'skipped', 'pending'].filter((status) => Number.isInteger(run[`${status}_count`]) && run[`${status}_count`] >= 0)
   return <article className={`run-card run-card--${run.status}`}>
-    <header><div><p className="run-context">{run.project_name} / {run.suite_name}</p><h3>{run.name}</h3></div><VerificationStatusBadge status={run.status} /></header>
+    <header><div><p className="run-context">{run.project_name} / {run.suite_name}</p><h3>{run.name}</h3></div><div className="run-card-status"><VerificationStatusBadge status={run.status} />{run.quality_gate_evaluation && <span className={`verification-badge verification-badge--${run.quality_gate_evaluation.outcome}`}>Gate: {run.quality_gate_evaluation.outcome.replaceAll('_', ' ')}</span>}</div></header>
     <div className="verification-dates"><span>Created: {formatRunDate(run.created_at)}</span>{run.started_at && <span>Started: {formatRunDate(run.started_at)}</span>}{run.completed_at && <span>Completed: {formatRunDate(run.completed_at)}</span>}</div>
     <footer><div className="run-progress"><p>{run.status === 'pending' ? 'Not started' : progress ? `${progress.executed} / ${progress.total} executed` : 'Result counts unavailable'}</p>
       {progress && progress.total > 0 && <progress aria-label={`Executed test cases: ${run.name}`} value={progress.executed} max={progress.total} />}

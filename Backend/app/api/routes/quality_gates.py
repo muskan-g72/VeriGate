@@ -24,13 +24,14 @@ def put_quality_gate(project_id: uuid.UUID, payload: QualityGateUpdate, current_
     get_accessible_project(database_session, project_id, current_user, MANAGE_TEST_ASSET_ROLES)
     gate = database_session.scalar(select(QualityGate).where(QualityGate.project_id == project_id))
     before = {key: getattr(gate, key) for key in payload.model_fields} if gate else None
+    is_create = gate is None
     if gate is None:
         gate = QualityGate(project_id=project_id)
         database_session.add(gate)
     for key, value in payload.model_dump().items(): setattr(gate, key, value)
     gate.updated_by_id = current_user.id
     database_session.flush()
-    record_audit_event(database_session, user_id=current_user.id, action="updated", resource_type="quality_gate", resource_id=gate.id, project_id=project_id, description=f"Quality gate changed: before={before}, after={payload.model_dump()}")
+    record_audit_event(database_session, user_id=current_user.id, action="created" if is_create else "updated", resource_type="quality_gate", resource_id=gate.id, project_id=project_id, description=f"Quality gate changed: before={before}, after={payload.model_dump()}")
     database_session.commit(); database_session.refresh(gate)
     return gate
 
