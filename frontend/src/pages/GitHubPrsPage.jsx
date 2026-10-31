@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { githubApi, projectsApi } from '../api/client'
+import { apiBaseUrl, githubApi, projectsApi } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import { VerificationStatusBadge } from '../components/VerificationRuns'
 import { formatDuration, formatRunDate } from '../verification'
@@ -255,11 +255,11 @@ export function GitHubPrsPage() {
                   In your GitHub repository settings, add a Webhook pointing to your backend:
                   <div className="code-snippet">
                     <code>
-                      {`${(import.meta.env.VITE_API_URL || 'https://verigate-ppkr.onrender.com').replace(/\/$/, '')}/api/v1/github/webhook`}
+                      {`${apiBaseUrl}/api/v1/github/webhook`}
                     </code>
                   </div>
                   <small style={{ color: 'var(--muted)', display: 'block', marginTop: '0.25rem' }}>
-                    GitHub requires an HTTPS reachable URL. Your backend is configured at <code>{import.meta.env.VITE_API_URL || 'https://verigate-ppkr.onrender.com'}</code>.
+                    GitHub requires an HTTPS reachable URL. Your backend is configured at <code>{apiBaseUrl}</code>.
                   </small>
                 </li>
                 <li>
@@ -292,6 +292,8 @@ export function GitHubPrsPage() {
                   <div className="pr-header-meta">
                     <VerificationStatusBadge status={run.status} />
                     {run.quality_gate_evaluation && <span className={`verification-badge verification-badge--${run.quality_gate_evaluation.outcome}`}>Gate: {run.quality_gate_evaluation.outcome.replace('_', ' ')}</span>}
+                    {run.comment_status && <span className={`verification-badge verification-badge--${run.comment_status === 'failed' ? 'failed' : 'passed'}`} title={run.comment_error || ''}>Comment: {run.comment_status}</span>}
+                    {run.comment_url && <a className="github-ext-link" href={run.comment_url} target="_blank" rel="noopener noreferrer">Comment</a>}
                     {run.pr_url && (
                       <a
                         href={run.pr_url}

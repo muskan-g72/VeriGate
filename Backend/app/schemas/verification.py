@@ -57,6 +57,9 @@ class VerificationRunRead(BaseModel):
     pr_repository: str | None = None
     pr_author: str | None = None
     pr_url: str | None = None
+    comment_status: str | None = None
+    comment_url: str | None = None
+    comment_error: str | None = None
     started_at: datetime | None
     completed_at: datetime | None
     created_at: datetime

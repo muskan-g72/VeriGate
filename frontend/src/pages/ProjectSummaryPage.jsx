@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { dashboardApi, githubApi, projectMembersApi, projectsApi, qualityGatesApi } from '../api/client'
+import { apiBaseUrl, dashboardApi, githubApi, projectMembersApi, projectsApi, qualityGatesApi } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 
 export function ProjectSummaryPage() {
@@ -23,6 +23,9 @@ export function ProjectSummaryPage() {
   const [githubBranch, setGithubBranch] = useState('main')
   const [githubEnabled, setGithubEnabled] = useState(true)
   const [githubSecret, setGithubSecret] = useState('')
+  const [prCommentsEnabled, setPrCommentsEnabled] = useState(false)
+  const [commentIncludeAi, setCommentIncludeAi] = useState(true)
+  const [commentMaxFailures, setCommentMaxFailures] = useState(10)
   const [savingGithub, setSavingGithub] = useState(false)
   const [githubSuccess, setGithubSuccess] = useState('')
   const [githubError, setGithubError] = useState('')
@@ -52,6 +55,9 @@ export function ProjectSummaryPage() {
           setGithubRepo(cfg.github_repo || '')
           setGithubBranch(cfg.github_default_branch || 'main')
           setGithubEnabled(cfg.github_verification_enabled ?? true)
+          setPrCommentsEnabled(cfg.pr_comments_enabled ?? false)
+          setCommentIncludeAi(cfg.comment_include_ai ?? true)
+          setCommentMaxFailures(cfg.comment_max_failures ?? 10)
         }
       })
 
@@ -83,6 +89,9 @@ export function ProjectSummaryPage() {
         github_repo: githubRepo.trim() || null,
         github_default_branch: githubBranch.trim() || 'main',
         github_verification_enabled: githubEnabled,
+        pr_comments_enabled: prCommentsEnabled,
+        comment_include_ai: commentIncludeAi,
+        comment_max_failures: Number(commentMaxFailures),
       }
       if (githubSecret.trim()) {
         payload.github_webhook_secret = githubSecret.trim()
@@ -93,6 +102,9 @@ export function ProjectSummaryPage() {
       setGithubRepo(updated.github_repo || '')
       setGithubBranch(updated.github_default_branch || 'main')
       setGithubEnabled(updated.github_verification_enabled)
+      setPrCommentsEnabled(updated.pr_comments_enabled ?? false)
+      setCommentIncludeAi(updated.comment_include_ai ?? true)
+      setCommentMaxFailures(updated.comment_max_failures ?? 10)
       setGithubSecret('')
       setGithubSuccess('GitHub configuration saved successfully.')
       setTimeout(() => setGithubSuccess(''), 4000)
@@ -135,7 +147,7 @@ export function ProjectSummaryPage() {
     )
   }
 
-  const backendBaseUrl = (import.meta.env.VITE_API_URL || 'https://verigate-ppkr.onrender.com').replace(/\/$/, '')
+  const backendBaseUrl = apiBaseUrl
   const webhookUrl =
     githubConfig?.webhook_url ||
     `${backendBaseUrl}/api/v1/github/webhook`
@@ -272,6 +284,11 @@ export function ProjectSummaryPage() {
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="form-row-grid">
+              <div className="form-field checkbox-field"><label className="checkbox-label"><input type="checkbox" checked={prCommentsEnabled} onChange={(e) => setPrCommentsEnabled(e.target.checked)} /><span>Post a summary comment on pull requests</span></label><small>GitHub token needs Pull requests or Issues write permission.</small></div>
+              {prCommentsEnabled && <><div className="form-field checkbox-field"><label className="checkbox-label"><input type="checkbox" checked={commentIncludeAi} onChange={(e) => setCommentIncludeAi(e.target.checked)} /><span>Include AI diagnosis</span></label></div><div className="form-field"><label htmlFor="comment-max-failures">Max failed tests shown</label><input id="comment-max-failures" type="number" min="1" max="25" value={commentMaxFailures} onChange={(e) => setCommentMaxFailures(e.target.value)} /></div></>}
             </div>
 
             <div className="form-row-grid">

@@ -182,6 +182,9 @@ def get_project_github_config(
         github_repo=project.github_repo,
         github_default_branch=project.github_default_branch or "main",
         github_verification_enabled=project.github_verification_enabled,
+        pr_comments_enabled=project.pr_comments_enabled,
+        comment_include_ai=project.comment_include_ai,
+        comment_max_failures=project.comment_max_failures,
         is_connected=bool(project.github_repo),
         webhook_configured=bool(
             project.github_webhook_secret or settings.github_webhook_secret
@@ -205,6 +208,7 @@ def update_project_github_config(
         MANAGE_PROJECT_ROLES,
     )
 
+    before = {key: getattr(project, key) for key in ("github_repo", "github_default_branch", "github_verification_enabled", "pr_comments_enabled", "comment_include_ai", "comment_max_failures")}
     if config_data.github_repo is not None:
         project.github_repo = normalize_github_repo(config_data.github_repo)
     if config_data.github_default_branch is not None:
@@ -217,6 +221,9 @@ def update_project_github_config(
             if config_data.github_webhook_secret.strip()
             else None
         )
+    project.pr_comments_enabled = config_data.pr_comments_enabled
+    project.comment_include_ai = config_data.comment_include_ai
+    project.comment_max_failures = config_data.comment_max_failures
 
     record_audit_event(
         database_session,
@@ -225,7 +232,7 @@ def update_project_github_config(
         action="updated_github_config",
         resource_type="project",
         resource_id=project.id,
-        description=f"Updated GitHub integration for '{project.name}' (repo: {project.github_repo or 'none'})",
+        description=f"Updated GitHub integration: before={before}, after={config_data.model_dump(exclude={'github_webhook_secret'})}",
     )
     database_session.commit()
     database_session.refresh(project)
@@ -236,6 +243,9 @@ def update_project_github_config(
         github_repo=project.github_repo,
         github_default_branch=project.github_default_branch or "main",
         github_verification_enabled=project.github_verification_enabled,
+        pr_comments_enabled=project.pr_comments_enabled,
+        comment_include_ai=project.comment_include_ai,
+        comment_max_failures=project.comment_max_failures,
         is_connected=bool(project.github_repo),
         webhook_configured=bool(
             project.github_webhook_secret or settings.github_webhook_secret

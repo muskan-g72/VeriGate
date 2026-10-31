@@ -4,6 +4,8 @@
 
 > VeriGate is a software verification and test management platform coordinating manual QA, automated Playwright browser verification, AI failure diagnostics, and CI/CD pull request validation in a unified command center.
 
+PR summary comments are disabled by default and can be enabled per project in GitHub settings. Set `FRONTEND_URL` to the public UI URL so comments link back to runs. The GitHub token needs classic `repo` scope (`public_repo` for public repositories), or fine-grained **Pull requests** and **Issues** read/write permissions.
+
 ---
 
 ## Live Deployments

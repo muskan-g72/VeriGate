@@ -45,6 +45,9 @@ class ProjectGitHubConfigUpdate(BaseModel):
     github_default_branch: str | None = "main"
     github_verification_enabled: bool = True
     github_webhook_secret: str | None = None
+    pr_comments_enabled: bool = False
+    comment_include_ai: bool = True
+    comment_max_failures: int = Field(default=10, ge=1, le=25)
 
 
 class ProjectGitHubConfigResponse(BaseModel):
@@ -55,6 +58,9 @@ class ProjectGitHubConfigResponse(BaseModel):
     is_connected: bool = False
     webhook_configured: bool = False
     webhook_url: str = ""
+    pr_comments_enabled: bool = False
+    comment_include_ai: bool = True
+    comment_max_failures: int = 10
 
 
 class ProjectRead(BaseModel):

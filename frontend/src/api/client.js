@@ -1,4 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL;
+// VITE_API_URL is an origin only. Keep the API version in request paths so an
+// accidentally supplied `/api/v1` suffix cannot create duplicated paths.
+export const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000')
+  .replace(/\/api\/v1\/?$/, '')
+  .replace(/\/$/, '')
 const TOKEN_KEY = 'verigate_session'
 
 export class ApiError extends Error {
@@ -21,7 +25,7 @@ async function request(path, options = {}) {
   const timeoutMs = options.timeout || 15000
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
-    const response = await fetch(`${API_URL}${path}`, {
+    const response = await fetch(`${apiBaseUrl}${path}`, {
       ...options,
       headers,
       signal: options.signal || controller.signal,
@@ -48,7 +52,7 @@ async function downloadBlob(path) {
   const token = sessionStore.get()
   if (token) headers.set('Authorization', `Bearer ${token}`)
   try {
-    const response = await fetch(`${API_URL}${path}`, { headers })
+    const response = await fetch(`${apiBaseUrl}${path}`, { headers })
     if (!response.ok) {
       const payload = typeof response.json === 'function' ? await response.json().catch(() => null) : null
       const detail = typeof payload?.detail === 'string' ? payload.detail : 'Failed to download file.'
@@ -74,7 +78,7 @@ export const authApi = {
   me: () => request('/api/v1/auth/me'),
   forgotPassword: (email) => request('/api/v1/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }),
   resetPassword: (token, password) => request('/api/v1/auth/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, password }) }),
-  oauthLoginUrl: (provider) => `${API_URL}/api/v1/auth/${encodeURIComponent(provider)}/login`,
+  oauthLoginUrl: (provider) => `${apiBaseUrl}/api/v1/auth/${encodeURIComponent(provider)}/login`,
   exchangeOAuthCode: (code) => request('/api/v1/auth/oauth/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code }) }),
 }
 

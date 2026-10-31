@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from datetime import UTC, datetime
@@ -8,12 +9,14 @@ from sqlalchemy.orm import Session, selectinload
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.models.test_case import TestCase
+from app.models.project import Project
 from app.models.verification_result import VerificationResult
 from app.models.verification_run import VerificationRun
 from app.services.audit_service import record_audit_event
 from app.services.automated_verification import execute_automated_results
 from app.services.failure_analysis_service import analyze_failed_result
 from app.services.github_service import post_github_commit_status
+from app.services.github_pr_comment_service import publish_pr_comment
 from app.services.quality_gate_service import evaluate_completed_run
 
 logger = logging.getLogger(__name__)
@@ -149,6 +152,8 @@ async def run_github_pr_verification(
                 result.executed_at = now
 
         # Run AI Failure Detective for any failed results
+        comment_analyses = {}
+        analysis_deadline = asyncio.get_running_loop().time() + 20
         for result in verification_run.results:
             if result.status in {"failed", "blocked"}:
                 test_case = next(
@@ -156,7 +161,9 @@ async def run_github_pr_verification(
                     result.test_case,
                 )
                 try:
-                    await analyze_failed_result(result, test_case)
+                    if len(comment_analyses) < 3 and asyncio.get_running_loop().time() < analysis_deadline:
+                        remaining = max(.1, analysis_deadline - asyncio.get_running_loop().time())
+                        comment_analyses[str(result.id)] = await asyncio.wait_for(analyze_failed_result(result, test_case), timeout=remaining)
                 except Exception as exc:
                     logger.warning(
                         f"AI failure analysis skipped for result {result.id}: {exc}"
@@ -234,6 +241,16 @@ async def run_github_pr_verification(
                 description=desc,
                 target_url=target_url,
             )
+
+        # A comment is an additive artifact; it is always attempted after the final
+        # commit status and is not allowed to affect run completion.
+        if project_id:
+            project = database_session.get(Project, project_id)
+            if project:
+                try:
+                    await publish_pr_comment(database_session, verification_run, project, comment_analyses)
+                except Exception:
+                    logger.exception("PR comment publication failed for run %s", verification_run.id)
 
         logger.info(
             f"PR verification {verification_run.id} finished successfully: {verification_run.passed_count}/{verification_run.total_cases} passed."
