@@ -70,6 +70,36 @@ def test_post_github_commit_status_graceful_handling(monkeypatch):
     assert res is False
 
 
+def test_post_github_commit_status_uses_explicit_project_token(monkeypatch):
+    monkeypatch.setattr("app.services.github_service.settings.github_token", None)
+    captured = {}
+
+    class Response:
+        status_code = 201
+        text = ""
+
+    class Client:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def post(self, *_args, **kwargs):
+            captured.update(kwargs)
+            return Response()
+
+    monkeypatch.setattr("app.services.github_service.httpx.AsyncClient", Client)
+    result = asyncio.run(
+        post_github_commit_status("owner/repo", "abc123", "success", "passed", token="project-token")
+    )
+    assert result is True
+    assert captured["headers"]["Authorization"] == "Bearer project-token"
+
+
 @pytest.mark.parametrize("status_code", [401, 403, 404, 422, 429])
 def test_commit_status_preserves_github_http_failure(monkeypatch, status_code):
     class Response:
@@ -142,6 +172,7 @@ def test_github_project_config_and_prs(client: TestClient):
             "github_default_branch": "main",
             "github_verification_enabled": True,
             "github_webhook_secret": "test-webhook-secret-123",
+            "github_token": "github_pat_project_only_token",
         },
     )
     assert patch_resp.status_code == 200
@@ -149,6 +180,17 @@ def test_github_project_config_and_prs(client: TestClient):
     assert updated_cfg["github_repo"] == "muskan-g72/VeriGate"
     assert updated_cfg["github_verification_enabled"] is True
     assert updated_cfg["webhook_configured"] is True
+    assert updated_cfg["token_configured"] is True
+    assert "github_token" not in updated_cfg
+
+    token_only = client.patch(
+        f"/api/v1/projects/{project_id}/github",
+        headers=headers,
+        json={"github_token": "github_pat_replacement_token"},
+    )
+    assert token_only.status_code == 200
+    assert token_only.json()["github_repo"] == "muskan-g72/VeriGate"
+    assert token_only.json()["pr_comments_enabled"] is False
     assert updated_cfg["is_connected"] is True
 
 

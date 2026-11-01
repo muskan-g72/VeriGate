@@ -67,6 +67,7 @@ async def publish_pr_comment(database_session: Session, run: VerificationRun, pr
     if not project.pr_comments_enabled or not run.pr_repository or not run.pr_number:
         return
     marker = f"<!-- verigate:run-comment project={project.id} -->"
+    token = getattr(project, "github_token", None)
     body = build_pr_comment(run, project, analyses)
     record = database_session.scalar(select(GitHubPrComment).where(GitHubPrComment.project_id == project.id, GitHubPrComment.repository == run.pr_repository, GitHubPrComment.pr_number == run.pr_number))
     if record is None:
@@ -77,23 +78,23 @@ async def publish_pr_comment(database_session: Session, run: VerificationRun, pr
     status = ""
     error = ""
     if record.github_comment_id:
-        response, status, error = await update_github_pr_comment(run.pr_repository, record.github_comment_id, body)
+        response, status, error = await update_github_pr_comment(run.pr_repository, record.github_comment_id, body, token)
         if status == 404:
-            found, _, _ = await find_github_pr_comment(run.pr_repository, run.pr_number, marker)
+            found, _, _ = await find_github_pr_comment(run.pr_repository, run.pr_number, marker, token=token)
             if found:
                 record.github_comment_id = found.get("id")
-                response, status, error = await update_github_pr_comment(run.pr_repository, record.github_comment_id, body)
+                response, status, error = await update_github_pr_comment(run.pr_repository, record.github_comment_id, body, token)
             else:
                 response, status, error = await create_github_pr_comment(
-                    run.pr_repository, run.pr_number, body
+                    run.pr_repository, run.pr_number, body, token
                 )
     else:
-        found, _, _ = await find_github_pr_comment(run.pr_repository, run.pr_number, marker)
+        found, _, _ = await find_github_pr_comment(run.pr_repository, run.pr_number, marker, token=token)
         if found:
             record.github_comment_id = found.get("id")
-            response, status, error = await update_github_pr_comment(run.pr_repository, record.github_comment_id, body)
+            response, status, error = await update_github_pr_comment(run.pr_repository, record.github_comment_id, body, token)
         else:
-            response, status, error = await create_github_pr_comment(run.pr_repository, run.pr_number, body)
+            response, status, error = await create_github_pr_comment(run.pr_repository, run.pr_number, body, token)
     if response:
         record.github_comment_id = response.get("id", record.github_comment_id)
         record.comment_url = response.get("html_url", record.comment_url)

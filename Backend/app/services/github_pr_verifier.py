@@ -30,6 +30,7 @@ async def publish_commit_status(
     description: str,
     target_url: str,
     successful_status: str,
+    token: str | None = None,
 ) -> None:
     """Publish and persist an outcome without interrupting comment publication."""
     try:
@@ -39,6 +40,7 @@ async def publish_commit_status(
             state=state,
             description=description,
             target_url=target_url,
+            token=token,
             return_details=True,
         )
         if isinstance(result, tuple):
@@ -116,6 +118,7 @@ async def run_github_pr_verification(
                 description="VeriGate automated verification running...",
                 target_url=target_url,
                 successful_status="pending",
+                token=getattr(project, "github_token", None),
             )
 
         # Retrieve active test cases
@@ -168,6 +171,7 @@ async def run_github_pr_verification(
                         f"{settings.frontend_url.rstrip('/')}/app/test-library"
                         f"?projectId={project_id}"
                     ) if project_id else None,
+                    token=getattr(project, "github_token", None),
                 )
                 if not published:
                     logger.warning(
@@ -285,6 +289,7 @@ async def run_github_pr_verification(
                 description=desc,
                 target_url=target_url,
                 successful_status="posted",
+                token=getattr(project, "github_token", None),
             )
 
         # A comment is an additive artifact; it is always attempted after the final

@@ -345,6 +345,7 @@ async def github_webhook(
                             f"{settings.frontend_url.rstrip('/')}/app/test-library"
                             f"?projectId={project.id}"
                         ),
+                        token=project.github_token,
                     )
                 except Exception:
                     logger.exception(

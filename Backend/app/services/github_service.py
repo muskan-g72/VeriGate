@@ -54,8 +54,8 @@ async def post_github_commit_status(repo: str, commit_sha: str, state: str, desc
     return result if return_details else False
 
 
-async def _comment_request(method: str, url: str, payload: dict | None = None, retries: int = 1) -> tuple[Any | None, int, str]:
-    token = settings.github_token
+async def _comment_request(method: str, url: str, payload: dict | None = None, retries: int = 1, token: str | None = None) -> tuple[Any | None, int, str]:
+    token = token or settings.github_token
     if not token:
         return None, 0, "GITHUB_TOKEN is not configured"
     for attempt in range(retries + 1):
@@ -78,17 +78,17 @@ async def _comment_request(method: str, url: str, payload: dict | None = None, r
     return None, 0, "GitHub comment request failed"
 
 
-async def create_github_pr_comment(repo: str, pr_number: int, body: str) -> tuple[dict | None, int, str]:
-    return await _comment_request("POST", f"{settings.github_api_url.rstrip('/')}/repos/{repo}/issues/{pr_number}/comments", {"body": body})
+async def create_github_pr_comment(repo: str, pr_number: int, body: str, token: str | None = None) -> tuple[dict | None, int, str]:
+    return await _comment_request("POST", f"{settings.github_api_url.rstrip('/')}/repos/{repo}/issues/{pr_number}/comments", {"body": body}, token=token)
 
 
-async def update_github_pr_comment(repo: str, comment_id: int, body: str) -> tuple[dict | None, int, str]:
-    return await _comment_request("PATCH", f"{settings.github_api_url.rstrip('/')}/repos/{repo}/issues/comments/{comment_id}", {"body": body})
+async def update_github_pr_comment(repo: str, comment_id: int, body: str, token: str | None = None) -> tuple[dict | None, int, str]:
+    return await _comment_request("PATCH", f"{settings.github_api_url.rstrip('/')}/repos/{repo}/issues/comments/{comment_id}", {"body": body}, token=token)
 
 
-async def find_github_pr_comment(repo: str, pr_number: int, marker: str, max_pages: int = 3) -> tuple[dict | None, int, str]:
+async def find_github_pr_comment(repo: str, pr_number: int, marker: str, max_pages: int = 3, token: str | None = None) -> tuple[dict | None, int, str]:
     for page in range(1, max_pages + 1):
-        data, status, error = await _comment_request("GET", f"{settings.github_api_url.rstrip('/')}/repos/{repo}/issues/{pr_number}/comments?per_page=100&page={page}", retries=0)
+        data, status, error = await _comment_request("GET", f"{settings.github_api_url.rstrip('/')}/repos/{repo}/issues/{pr_number}/comments?per_page=100&page={page}", retries=0, token=token)
         if data is None:
             return None, status, error
         for comment in data:

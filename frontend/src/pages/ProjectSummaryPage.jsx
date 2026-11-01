@@ -23,6 +23,7 @@ export function ProjectSummaryPage() {
   const [githubBranch, setGithubBranch] = useState('main')
   const [githubEnabled, setGithubEnabled] = useState(true)
   const [githubSecret, setGithubSecret] = useState('')
+  const [githubToken, setGithubToken] = useState('')
   const [prCommentsEnabled, setPrCommentsEnabled] = useState(false)
   const [commentIncludeAi, setCommentIncludeAi] = useState(true)
   const [commentMaxFailures, setCommentMaxFailures] = useState(10)
@@ -96,6 +97,7 @@ export function ProjectSummaryPage() {
       if (githubSecret.trim()) {
         payload.github_webhook_secret = githubSecret.trim()
       }
+      if (githubToken.trim()) payload.github_token = githubToken.trim()
 
       const updated = await githubApi.updateProjectConfig(projectId, payload)
       setGithubConfig(updated)
@@ -106,6 +108,7 @@ export function ProjectSummaryPage() {
       setCommentIncludeAi(updated.comment_include_ai ?? true)
       setCommentMaxFailures(updated.comment_max_failures ?? 10)
       setGithubSecret('')
+      setGithubToken('')
       setGithubSuccess('GitHub configuration saved successfully.')
       setTimeout(() => setGithubSuccess(''), 4000)
     } catch (err) {
@@ -260,6 +263,14 @@ export function ProjectSummaryPage() {
 
           <form onSubmit={handleSaveGithubConfig} className="github-config-form">
             <div className="form-row-grid">
+              <div className="form-field">
+                <label htmlFor="github-token-input">GitHub Access Token:</label>
+                <div className="input-with-icon">
+                  <Key size={16} />
+                  <input id="github-token-input" type="password" autoComplete="new-password" placeholder={githubConfig?.token_configured ? '•••••••• (token is set; leave blank to keep)' : 'Fine-grained token with commit status and PR write access'} value={githubToken} onChange={(e) => setGithubToken(e.target.value)} />
+                </div>
+                <small>Stored for this project only. Leave blank to keep the current token.</small>
+              </div>
               <div className="form-field">
                 <label htmlFor="github-repo-input">Repository (owner/repo):</label>
                 <input

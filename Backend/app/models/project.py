@@ -55,6 +55,10 @@ class Project(Base):
         String(255),
         nullable=True,
     )
+    github_token: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
     pr_comments_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     comment_include_ai: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     comment_max_failures: Mapped[int] = mapped_column(default=10, nullable=False)

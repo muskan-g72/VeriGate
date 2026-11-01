@@ -67,6 +67,7 @@ def create_project(
         github_default_branch=project_data.github_default_branch or "main",
         github_verification_enabled=project_data.github_verification_enabled,
         github_webhook_secret=project_data.github_webhook_secret,
+        github_token=project_data.github_token.strip() if project_data.github_token else None,
     )
     database_session.add(project)
     database_session.flush()
@@ -189,6 +190,7 @@ def get_project_github_config(
         webhook_configured=bool(
             project.github_webhook_secret or settings.github_webhook_secret
         ),
+        token_configured=bool(project.github_token),
         webhook_url=webhook_url,
     )
 
@@ -221,9 +223,14 @@ def update_project_github_config(
             if config_data.github_webhook_secret.strip()
             else None
         )
-    project.pr_comments_enabled = config_data.pr_comments_enabled
-    project.comment_include_ai = config_data.comment_include_ai
-    project.comment_max_failures = config_data.comment_max_failures
+    if config_data.github_token is not None:
+        project.github_token = config_data.github_token.strip() or None
+    if config_data.pr_comments_enabled is not None:
+        project.pr_comments_enabled = config_data.pr_comments_enabled
+    if config_data.comment_include_ai is not None:
+        project.comment_include_ai = config_data.comment_include_ai
+    if config_data.comment_max_failures is not None:
+        project.comment_max_failures = config_data.comment_max_failures
 
     record_audit_event(
         database_session,
@@ -232,7 +239,7 @@ def update_project_github_config(
         action="updated_github_config",
         resource_type="project",
         resource_id=project.id,
-        description=f"Updated GitHub integration: before={before}, after={config_data.model_dump(exclude={'github_webhook_secret'})}",
+        description=f"Updated GitHub integration: before={before}, after={config_data.model_dump(exclude={'github_webhook_secret', 'github_token'})}",
     )
     database_session.commit()
     database_session.refresh(project)
@@ -250,6 +257,7 @@ def update_project_github_config(
         webhook_configured=bool(
             project.github_webhook_secret or settings.github_webhook_secret
         ),
+        token_configured=bool(project.github_token),
         webhook_url=webhook_url,
     )
 
