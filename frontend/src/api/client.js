@@ -47,7 +47,7 @@ async function request(path, options = {}) {
   }
 }
 
-async function downloadBlob(path) {
+async function downloadBlob(path, fallbackFilename = 'verigate-proof-of-verification.pdf') {
   const headers = new Headers()
   const token = sessionStore.get()
   if (token) headers.set('Authorization', `Bearer ${token}`)
@@ -60,7 +60,7 @@ async function downloadBlob(path) {
     }
     const blob = await response.blob()
     const disposition = response.headers.get('Content-Disposition')
-    let filename = 'verigate-proof-of-verification.pdf'
+    let filename = fallbackFilename
     if (disposition && disposition.includes('filename=')) {
       const match = disposition.match(/filename="?([^"]+)"?/)
       if (match && match[1]) filename = match[1]
@@ -155,6 +155,19 @@ export const testCasesApi = {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
   }),
   remove: (caseId) => request(`/api/v1/test-cases/${caseId}`, { method: 'DELETE' }),
+}
+
+export const requirementsApi = {
+  list: (projectId, { includeDeprecated = false } = {}) => request(`/api/v1/projects/${projectId}/requirements${includeDeprecated ? '?include_deprecated=true' : ''}`),
+  create: (projectId, data) => request(`/api/v1/projects/${projectId}/requirements`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  read: (requirementId) => request(`/api/v1/requirements/${requirementId}`),
+  update: (requirementId, data) => request(`/api/v1/requirements/${requirementId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  traceability: (projectId, filters = {}) => request(`/api/v1/projects/${projectId}/requirements/traceability?${new URLSearchParams(Object.entries({ include_deprecated: filters.includeDeprecated || undefined, status: filters.status, priority: filters.priority, category: filters.category, limit: filters.limit, offset: filters.offset }).filter(([, value]) => value !== undefined && value !== '')).toString()}`),
+  linkTestCase: (requirementId, testCaseId) => request(`/api/v1/requirements/${requirementId}/test-cases/${testCaseId}`, { method: 'POST' }),
+  unlinkTestCase: (requirementId, testCaseId) => request(`/api/v1/requirements/${requirementId}/test-cases/${testCaseId}`, { method: 'DELETE' }),
+  linkIssue: (requirementId, issueId) => request(`/api/v1/requirements/${requirementId}/issues/${issueId}`, { method: 'POST' }),
+  unlinkIssue: (requirementId, issueId) => request(`/api/v1/requirements/${requirementId}/issues/${issueId}`, { method: 'DELETE' }),
+  exportTraceability: (projectId, includeDeprecated = false) => downloadBlob(`/api/v1/projects/${projectId}/requirements/traceability.csv${includeDeprecated ? '?include_deprecated=true' : ''}`, 'verigate-rtm.csv'),
 }
 
 export const issuesApi = {

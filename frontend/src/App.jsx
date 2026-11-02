@@ -26,6 +26,7 @@ import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { RunsPage } from './pages/RunsPage'
 import { RunComparisonPage } from './pages/RunComparisonPage'
+import { RequirementsPage } from './pages/RequirementsPage'
 import { TestCasesPage } from './pages/TestCasesPage'
 import { TestLibraryPage } from './pages/TestLibraryPage'
 import { TestSuitesPage } from './pages/TestSuitesPage'
@@ -115,6 +116,8 @@ export default function App() {
           <Route path="issues/:issueId" element={<IssueDetailPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:projectId" element={<ProjectSummaryPage />} />
+          <Route path="projects/:projectId/requirements" element={<RequirementsPage />} />
+          <Route path="requirements" element={<RequirementsPage />} />
           <Route path="verification-runs/:runId" element={<VerificationRunPage />} />
           <Route path="test-library" element={<TestLibraryPage />} />
           <Route path="test-suites" element={<TestSuitesPage />} />

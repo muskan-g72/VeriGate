@@ -10,6 +10,9 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from app.models.test_suite import TestSuite
     from app.models.verification_result import VerificationResult
+    from app.models.requirement import Requirement
+
+from app.models.requirement import requirement_test_cases
 
 
 class TestCase(Base):
@@ -67,3 +70,4 @@ class TestCase(Base):
         back_populates="test_case",
         passive_deletes="all",
     )
+    requirements: Mapped[list["Requirement"]] = relationship(back_populates="test_cases", secondary=requirement_test_cases)

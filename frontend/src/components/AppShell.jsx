@@ -16,6 +16,7 @@ import {
   Settings,
   Shield,
   TestTube2,
+  FileCheck2,
   Users,
   X,
 } from 'lucide-react'
@@ -50,6 +51,7 @@ const adminNavGroups = [
     'Quality & Audit',
     [
       [Bug, 'Issues', '/app/issues'],
+      [FileCheck2, 'Requirements', '/app/requirements'],
       [FlaskConical, 'Evidence', '/admin/evidence'],
       [BookOpen, 'Reports', '/admin/reports'],
       [Shield, 'Audit Logs', '/admin/audit-logs'],
@@ -86,6 +88,7 @@ const userNavGroups = [
     'Quality',
     [
       [Bug, 'Issues', '/app/issues'],
+      [FileCheck2, 'Requirements', '/app/requirements'],
       [FlaskConical, 'Evidence', '/app/evidence'],
       [BookOpen, 'Reports', '/app/insights'],
     ],
@@ -134,6 +137,7 @@ export function AppShell() {
     '/app/github-prs': 'PR Verifications',
     '/app/evidence': 'Evidence',
     '/app/insights': 'Insights',
+    '/app/requirements': 'Requirements',
     '/app/access': 'Access',
   }
 
@@ -144,7 +148,7 @@ export function AppShell() {
       : location.pathname.startsWith('/app/verification-runs/')
         ? 'Verification Run'
         : location.pathname.startsWith('/app/projects/')
-          ? 'Project Summary'
+          ? location.pathname.endsWith('/requirements') ? 'Requirements' : 'Project Summary'
           : isAdminMode
             ? 'Control Center'
             : 'Workspace')

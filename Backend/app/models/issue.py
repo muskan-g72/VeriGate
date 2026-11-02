@@ -13,6 +13,9 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.verification_result import VerificationResult
     from app.models.verification_run import VerificationRun
+    from app.models.requirement import Requirement
+
+from app.models.requirement import issue_requirements
 
 
 class Issue(Base):
@@ -99,3 +102,4 @@ class Issue(Base):
         back_populates="assigned_issues",
         foreign_keys=[assigned_to_id],
     )
+    requirements: Mapped[list["Requirement"]] = relationship(back_populates="issues", secondary=issue_requirements)

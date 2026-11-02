@@ -10,6 +10,7 @@ from app.models import (  # noqa: F401
     Issue,
     PasswordResetToken,
     Project,
+    Requirement,
     TestCase,
     TestSuite,
     User,

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from app.models.issue import Issue
     from app.models.project_member import ProjectMember
     from app.models.quality_gate import QualityGate
+    from app.models.requirement import Requirement
     from app.models.test_suite import TestSuite
     from app.models.user import User
 
@@ -91,3 +92,4 @@ class Project(Base):
         back_populates="project",
     )
     quality_gate: Mapped["QualityGate | None"] = relationship(back_populates="project", uselist=False, cascade="all, delete-orphan")
+    requirements: Mapped[list["Requirement"]] = relationship(back_populates="project", cascade="all, delete-orphan")

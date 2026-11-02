@@ -11,6 +11,7 @@ from app.api.routes.members import router as members_router
 from app.api.routes.projects import router as projects_router
 from app.api.routes.quality_gates import router as quality_gates_router
 from app.api.routes.reports import router as reports_router
+from app.api.routes.requirements import router as requirements_router
 from app.api.routes.teams import router as teams_router
 from app.api.routes.test_cases import router as test_cases_router
 from app.api.routes.test_suites import router as test_suites_router
@@ -68,6 +69,7 @@ api_router.include_router(
     reports_router,
     tags=["Reports"],
 )
+api_router.include_router(requirements_router, tags=["Requirements"])
 
 api_router.include_router(
     audit_logs_router,

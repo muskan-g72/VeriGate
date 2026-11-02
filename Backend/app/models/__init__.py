@@ -6,6 +6,7 @@ from app.models.password_reset_token import PasswordResetToken
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.quality_gate import QualityGate, QualityGateEvaluation
+from app.models.requirement import Requirement
 from app.models.github_pr_comment import GitHubPrComment
 from app.models.team import Team
 from app.models.team_member import TeamMember
@@ -23,6 +24,7 @@ __all__ = [
     "ProjectMember",
     "QualityGate",
     "QualityGateEvaluation",
+    "Requirement",
     "GitHubPrComment",
     "Issue",
     "OAuthAccount",

@@ -134,6 +134,9 @@ export function ProjectSummaryPage() {
           <Link className="secondary-button" to="/app/projects">
             Back to Projects
           </Link>
+          <Link className="secondary-button" to={`/app/projects/${projectId}/requirements`}>
+            Requirements traceability
+          </Link>
         </div>
       </main>
     )
