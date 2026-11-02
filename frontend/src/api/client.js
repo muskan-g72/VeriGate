@@ -177,6 +177,7 @@ export const reportsApi = {
   project: (projectId) => request(`/api/v1/projects/${projectId}/reports`),
   trend: (projectId) => request(`/api/v1/projects/${projectId}/reports/verification-trend`),
   issues: (projectId) => request(`/api/v1/projects/${projectId}/reports/issues`),
+  flakyTests: (projectId) => request(`/api/v1/projects/${projectId}/reports/flaky-tests`),
   verificationReport: (verificationRunId, format = 'json') => request(`/api/v1/verification-runs/${verificationRunId}/report?format=${encodeURIComponent(format)}`),
   downloadVerificationReport: (verificationRunId) => downloadBlob(`/api/v1/verification-runs/${verificationRunId}/report?format=pdf`),
 }
