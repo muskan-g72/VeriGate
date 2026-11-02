@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -29,6 +29,7 @@ class VerificationResultRead(BaseModel):
     id: uuid.UUID
     verification_run_id: uuid.UUID
     test_case_id: uuid.UUID
+    test_case_snapshot: dict[str, Any] | None = None
     status: ResultStatus
     actual_result: str | None
     notes: str | None

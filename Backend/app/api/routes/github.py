@@ -36,6 +36,7 @@ from app.schemas.verification import VerificationRunRead
 from app.services.audit_service import record_audit_event
 from app.services.github_pr_verifier import run_github_pr_verification
 from app.services.github_service import post_github_commit_status, verify_github_signature
+from app.services.test_case_snapshot_service import build_test_case_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -428,7 +429,7 @@ async def github_webhook(
                         res.executed_at = None
                 else:
                     existing_run.results = [
-                        VerificationResult(test_case_id=tc.id) for tc in selected_cases
+                        VerificationResult(test_case_id=tc.id, test_case_snapshot=build_test_case_snapshot(tc)) for tc in selected_cases
                     ]
 
                 verification_run = existing_run
@@ -453,7 +454,7 @@ async def github_webhook(
                     idempotency_key=idempotency_key,
                 )
                 verification_run.results = [
-                    VerificationResult(test_case_id=tc.id) for tc in selected_cases
+                    VerificationResult(test_case_id=tc.id, test_case_snapshot=build_test_case_snapshot(tc)) for tc in selected_cases
                 ]
 
             database_session.add(verification_run)

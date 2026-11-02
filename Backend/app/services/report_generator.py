@@ -10,6 +10,7 @@ from playwright.async_api import async_playwright
 from sqlalchemy.orm import Session
 
 from app.models.verification_result import VerificationResult
+from app.services.test_case_snapshot_service import snapshot_value
 from app.models.verification_run import VerificationRun
 from app.services.failure_analysis_service import analyze_failed_result
 
@@ -114,7 +115,7 @@ async def build_verification_run_report_data(
 
     for result in run.results:
         tc = result.test_case
-        title = tc.title if tc else f"Test Case {result.test_case_id}"
+        title = snapshot_value(result, "title", f"Test Case {result.test_case_id}")
 
         if result.executed_at:
             timeline.append(
@@ -207,13 +208,11 @@ async def build_verification_run_report_data(
                 "result_id": str(result.id),
                 "test_case_id": str(result.test_case_id),
                 "title": title,
-                "description": tc.description if tc else None,
-                "priority": tc.priority if tc else "medium",
-                "execution_mode": getattr(tc, "execution_mode", "manual"),
-                "steps": tc.steps if tc else None,
-                "expected_result": sanitize_report_text(tc.expected_result)
-                if tc
-                else None,
+                "description": snapshot_value(result, "description"),
+                "priority": snapshot_value(result, "priority", "medium"),
+                "execution_mode": snapshot_value(result, "execution_mode", "manual"),
+                "steps": snapshot_value(result, "steps"),
+                "expected_result": sanitize_report_text(snapshot_value(result, "expected_result")),
                 "actual_result": sanitize_report_text(result.actual_result),
                 "notes": sanitize_report_text(result.notes),
                 "status": result.status,

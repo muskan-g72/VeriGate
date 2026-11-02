@@ -43,6 +43,7 @@ from app.services.failure_analysis_service import (
 from app.services.quality_gate_service import evaluate_completed_run
 from app.services.report_generator import sanitize_report_text
 from app.services.run_comparison_service import compare_run_results
+from app.services.test_case_snapshot_service import build_test_case_snapshot, snapshot_value
 
 router = APIRouter()
 
@@ -206,7 +207,10 @@ async def create_verification_run(
         name=run_data.name.strip(),
     )
     verification_run.results = [
-        VerificationResult(test_case_id=test_case.id)
+        VerificationResult(
+            test_case_id=test_case.id,
+            test_case_snapshot=build_test_case_snapshot(test_case),
+        )
         for test_case in active_test_cases
     ]
 
@@ -340,12 +344,11 @@ def compare_verification_runs(
     if len(baseline.results) + len(target.results) > 6000:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Comparison is limited to 6,000 results")
 
-    # Result records intentionally do not snapshot titles; renamed cases show their current title.
     def serialize(results: list[VerificationResult]) -> list[dict]:
         return [{"id": item.id, "test_case_id": item.test_case_id, "status": item.status, "duration": item.duration,
-                 "title": item.test_case.title if item.test_case else None,
-                 "priority": item.test_case.priority if item.test_case else "medium",
-                 "execution_mode": item.test_case.execution_mode if item.test_case else "manual",
+                 "title": snapshot_value(item, "title"),
+                 "priority": snapshot_value(item, "priority", "medium"),
+                 "execution_mode": snapshot_value(item, "execution_mode", "manual"),
                  "failure_message": (sanitize_report_text(item.failure_message) or "")[:300] or None} for item in results]
     comparison = compare_run_results(serialize(baseline.results), serialize(target.results))
     baseline_gate = baseline.quality_gate_evaluation.outcome if baseline.quality_gate_evaluation else None
