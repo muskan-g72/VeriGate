@@ -20,18 +20,29 @@ if sys.platform == "win32":
             pass
 
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.services.scheduled_run_service import scheduler_loop
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    stop_event = asyncio.Event()
+    task = asyncio.create_task(scheduler_loop(stop_event))
+    yield
+    stop_event.set()
+    await task
 
 
 app = FastAPI(
     title=settings.app_name,
     description="Backend API for the VeriGate software verification platform.",
     version=settings.app_version,
+    lifespan=lifespan,
 )
 
 app.add_middleware(

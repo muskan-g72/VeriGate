@@ -15,6 +15,7 @@ from app.models.test_suite import TestSuite
 from app.models.user import User
 from app.models.verification_result import VerificationResult
 from app.models.verification_run import VerificationRun
+from app.models.scheduled_run import ScheduledRun
 
 __all__ = [
     "AuditLog",
@@ -36,5 +37,6 @@ __all__ = [
     "User",
     "VerificationResult",
     "VerificationRun",
+    "ScheduledRun",
 ]
 

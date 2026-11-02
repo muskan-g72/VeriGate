@@ -16,6 +16,7 @@ from app.api.routes.teams import router as teams_router
 from app.api.routes.test_cases import router as test_cases_router
 from app.api.routes.test_suites import router as test_suites_router
 from app.api.routes.verification_runs import router as verification_runs_router
+from app.api.routes.scheduled_runs import router as scheduled_runs_router
 
 api_router = APIRouter()
 
@@ -59,6 +60,7 @@ api_router.include_router(
     verification_runs_router,
     tags=["Verification Runs"],
 )
+api_router.include_router(scheduled_runs_router, tags=["Scheduled Runs"])
 
 api_router.include_router(
     issues_router,
