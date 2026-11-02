@@ -147,7 +147,7 @@ function VerificationRun({ runId }) {
         {summaryError && <div className="form-alert" role="alert"><span>{summaryError}</span><button className="secondary-button" disabled={Boolean(savingId)} onClick={retrySummary}>Refresh status</button></div>}
       </section>
       <AiFailureDetective run={run} />
-      <section className="verification-results" aria-label="Test execution results">{run.results.length === 0 && <p>This run has no results.</p>}{run.results.map((result) => <VerificationResultCard key={result.id} result={result} testCase={cases.find((item) => item.id === result.test_case_id)} saving={savingId === result.id} disabled={Boolean(savingId)} onSave={saveResult} />)}</section>
+      <section className="verification-results" aria-label="Test execution results">{run.results.length === 0 && <p>This run has no results.</p>}{run.results.map((result) => <VerificationResultCard key={result.id} result={result} testCase={result.test_case_snapshot || cases.find((item) => item.id === result.test_case_id)} saving={savingId === result.id} disabled={Boolean(savingId)} onSave={saveResult} />)}</section>
     </>}
   </main>
 }
