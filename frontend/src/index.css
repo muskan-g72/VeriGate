@@ -2418,3 +2418,5 @@ body:not(.has-landing) .gate-mark__left,body:not(.has-landing) .gate-mark__node-
 .github-setup-guide .code-snippet {
   margin-top: 0.25rem;
 }
+
+.capability-table{overflow-x:auto}.capability-row{min-width:720px;display:grid;grid-template-columns:minmax(220px,2.2fr) repeat(6,minmax(72px,1fr));align-items:center;border-bottom:1px solid rgba(255,255,255,.08)}.capability-row:last-child{border-bottom:0}.capability-row>*{padding:14px 10px;text-align:center;font-size:13px;color:var(--text-2)}.capability-row>*:first-child{text-align:left;color:var(--text)}.capability-header>*{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}.capability-row:not(.capability-header) span{color:#87e8ba;font-size:16px}.capability-row:not(.capability-header) span[aria-label$="not allowed"]{color:var(--text-3)}

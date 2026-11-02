@@ -99,6 +99,7 @@ const userNavGroups = [
     'Account',
     [
       [KeyRound, 'Profile / Settings', '/app/access'],
+      [Shield, 'Role Capabilities', '/app/role-capabilities'],
     ],
   ],
 ]
@@ -142,6 +143,7 @@ export function AppShell() {
     '/app/insights': 'Insights',
     '/app/requirements': 'Requirements',
     '/app/access': 'Access',
+    '/app/role-capabilities': 'Role Capabilities',
   }
 
   const pageTitle =

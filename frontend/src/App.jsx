@@ -27,6 +27,7 @@ import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { RunsPage } from './pages/RunsPage'
 import { RunComparisonPage } from './pages/RunComparisonPage'
 import { RequirementsPage } from './pages/RequirementsPage'
+import { RoleCapabilitiesPage } from './pages/RoleCapabilitiesPage'
 import { TestCasesPage } from './pages/TestCasesPage'
 import { TestLibraryPage } from './pages/TestLibraryPage'
 import { TestSuitesPage } from './pages/TestSuitesPage'
@@ -129,6 +130,7 @@ export default function App() {
           <Route path="evidence" element={<EvidencePage />} />
           <Route path="insights" element={<InsightsPage />} />
           <Route path="access" element={<AccessPage />} />
+          <Route path="role-capabilities" element={<RoleCapabilitiesPage />} />
         </Route>
 
         {/* Fallback 404 */}

@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   CheckCircle2,
+  Copy,
   LoaderCircle,
   RefreshCw,
   Search,
@@ -40,6 +41,7 @@ export function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [error, setError] = useState('')
   const [successNotice, setSuccessNotice] = useState('')
+  const [copyNotice, setCopyNotice] = useState(false)
 
   // Modal dialog state for confirmations
   const [dialog, setDialog] = useState({
@@ -107,6 +109,16 @@ export function AdminUsersPage() {
   function closeDialog() {
     if (actionPending) return
     setDialog({ open: false, type: null, user: null, targetValue: null })
+  }
+
+  async function copyUserId(userId) {
+    try {
+      await navigator.clipboard.writeText(userId)
+      setCopyNotice(true)
+      window.setTimeout(() => setCopyNotice(false), 2500)
+    } catch {
+      setError('Could not copy the user ID. Please try again.')
+    }
   }
 
   async function confirmAction() {
@@ -191,6 +203,14 @@ export function AdminUsersPage() {
           <button type="button" className="link-button" onClick={() => setSuccessNotice('')}>
             Dismiss
           </button>
+        </div>
+      )}
+      {copyNotice && (
+        <div
+          role="status"
+          style={{ position: 'fixed', right: '24px', bottom: '24px', zIndex: 200, display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 16px', border: '1px solid rgba(52,211,153,0.35)', borderRadius: '10px', background: '#10271f', boxShadow: '0 12px 32px rgba(0,0,0,0.35)', color: '#6ee7b7', fontSize: '13px' }}
+        >
+          <CheckCircle2 size={16} /> User ID copied
         </div>
       )}
 
@@ -321,6 +341,14 @@ export function AdminUsersPage() {
                               )}
                             </div>
                             <small style={{ color: 'var(--text-3)', fontSize: '12px', display: 'block' }}>{u.email}</small>
+                            <button
+                              type="button"
+                              onClick={() => copyUserId(u.id)}
+                              title="Copy user ID"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '5px', padding: 0, border: 0, background: 'none', color: '#c084fc', fontSize: '11px', cursor: 'pointer' }}
+                            >
+                              <Copy size={12} /> Copy user ID
+                            </button>
                           </div>
                         </div>
                       </td>
