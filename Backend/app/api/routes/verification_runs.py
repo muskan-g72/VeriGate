@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -26,6 +26,8 @@ from app.schemas.verification import (
     VerificationResultRead,
     VerificationResultUpdate,
     VerificationRunCreate,
+    ComparableRunRead,
+    RunComparisonRead,
     VerificationRunDetail,
     VerificationRunRead,
 )
@@ -39,6 +41,8 @@ from app.services.failure_analysis_service import (
     analyze_verification_run,
 )
 from app.services.quality_gate_service import evaluate_completed_run
+from app.services.report_generator import sanitize_report_text
+from app.services.run_comparison_service import compare_run_results
 
 router = APIRouter()
 
@@ -261,6 +265,93 @@ def list_verification_runs(
             .order_by(VerificationRun.created_at.desc())
         )
     )
+
+
+def _comparison_run_summary(run: VerificationRun) -> dict:
+    return {
+        "id": run.id, "name": run.name, "status": run.status,
+        "created_at": run.created_at, "completed_at": run.completed_at,
+        "pr_number": run.pr_number, "pr_commit_sha": run.pr_commit_sha,
+        "gate_outcome": run.quality_gate_evaluation.outcome if run.quality_gate_evaluation else None,
+    }
+
+
+@router.get("/test-suites/{test_suite_id}/comparable-runs", response_model=list[ComparableRunRead])
+def list_comparable_runs(
+    test_suite_id: uuid.UUID,
+    current_user: CurrentUser,
+    database_session: DatabaseSession,
+    limit: int = Query(default=20, ge=1, le=100),
+) -> list[dict]:
+    test_suite = get_owned_test_suite(test_suite_id, current_user.id, database_session)
+    runs = database_session.scalars(
+        select(VerificationRun)
+        .options(selectinload(VerificationRun.results), selectinload(VerificationRun.quality_gate_evaluation))
+        .where(VerificationRun.test_suite_id == test_suite.id, VerificationRun.status == "completed")
+        .order_by(VerificationRun.created_at.desc()).limit(limit)
+    )
+    response = []
+    for run in runs:
+        executed = [result for result in run.results if result.status in FINAL_RESULT_STATUSES]
+        pass_rate = round(100 * sum(result.status == "passed" for result in executed) / len(executed), 1) if executed else None
+        response.append({"id": run.id, "label": run.name, "created_at": run.created_at, "status": run.status,
+                         "pass_rate": pass_rate, "gate_outcome": run.quality_gate_evaluation.outcome if run.quality_gate_evaluation else None})
+    return response
+
+
+@router.get("/verification-runs/{target_run_id}/compare", response_model=RunComparisonRead)
+def compare_verification_runs(
+    target_run_id: uuid.UUID,
+    current_user: CurrentUser,
+    database_session: DatabaseSession,
+    baseline_run_id: uuid.UUID | None = None,
+) -> dict:
+    target = database_session.scalar(select(VerificationRun).where(VerificationRun.id == target_run_id))
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Verification run not found")
+    get_owned_test_suite(target.test_suite_id, current_user.id, database_session, VIEW_PROJECT_ROLES)
+    if baseline_run_id is None:
+        baseline_run_id = database_session.scalar(
+            select(VerificationRun.id).where(
+                VerificationRun.test_suite_id == target.test_suite_id,
+                VerificationRun.status == "completed",
+                VerificationRun.created_at < target.created_at,
+            ).order_by(VerificationRun.created_at.desc()).limit(1)
+        )
+        if baseline_run_id is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="There is no earlier run to compare with")
+    if baseline_run_id == target_run_id:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="A run cannot be compared with itself")
+    runs = list(database_session.scalars(
+        select(VerificationRun).options(
+            selectinload(VerificationRun.results).selectinload(VerificationResult.test_case),
+            selectinload(VerificationRun.quality_gate_evaluation),
+        ).where(VerificationRun.id.in_([baseline_run_id, target_run_id]))
+    ))
+    by_id = {run.id: run for run in runs}
+    baseline, target = by_id.get(baseline_run_id), by_id.get(target_run_id)
+    if baseline is None or target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Verification run not found")
+    get_owned_test_suite(baseline.test_suite_id, current_user.id, database_session, VIEW_PROJECT_ROLES)
+    if baseline.test_suite_id != target.test_suite_id:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Runs must belong to the same test suite and project")
+    if baseline.status != "completed" or target.status != "completed":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Run results are not final yet")
+    if len(baseline.results) + len(target.results) > 6000:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Comparison is limited to 6,000 results")
+
+    # Result records intentionally do not snapshot titles; renamed cases show their current title.
+    def serialize(results: list[VerificationResult]) -> list[dict]:
+        return [{"id": item.id, "test_case_id": item.test_case_id, "status": item.status, "duration": item.duration,
+                 "title": item.test_case.title if item.test_case else None,
+                 "priority": item.test_case.priority if item.test_case else "medium",
+                 "execution_mode": item.test_case.execution_mode if item.test_case else "manual",
+                 "failure_message": (sanitize_report_text(item.failure_message) or "")[:300] or None} for item in results]
+    comparison = compare_run_results(serialize(baseline.results), serialize(target.results))
+    baseline_gate = baseline.quality_gate_evaluation.outcome if baseline.quality_gate_evaluation else None
+    target_gate = target.quality_gate_evaluation.outcome if target.quality_gate_evaluation else None
+    return {"baseline": _comparison_run_summary(baseline), "target": _comparison_run_summary(target),
+            **comparison, "gate_changed": baseline_gate != target_gate}
 
 
 @router.get(

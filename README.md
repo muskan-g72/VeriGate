@@ -27,6 +27,7 @@ PR summary comments are disabled by default and can be enabled per project in Gi
 * **AI Failure Detective**: Automated root-cause diagnosis for failed test results powered by Google Gemini, OpenAI, or a deterministic heuristic fallback engine.
 * **GitHub PR Verification**: HMAC-SHA256 verified webhook receiver that triggers automated verification on pull requests and reports commit status checks back to GitHub.
 * **Defect Tracking & PDF Reports**: Direct issue logging linked to failed test results, immutable audit logs, and exportable audit-ready PDF/JSON reports.
+* **Run Comparison**: Compare completed runs from the same suite to surface regressions, improvements, case additions/removals, and execution-time changes. Test-result records do not snapshot test-case titles, so comparisons show the case's current title after a rename.
 
 ---
 

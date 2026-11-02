@@ -27,6 +27,8 @@ function VerificationRun({ runId }) {
   const [generatingReport, setGeneratingReport] = useState(false)
   const [reportNotice, setReportNotice] = useState('')
   const [reportError, setReportError] = useState('')
+  const [comparableRuns, setComparableRuns] = useState([])
+  const [baselineRunId, setBaselineRunId] = useState('')
   const busy = useRef(false)
   const mounted = useRef(true)
   useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
@@ -37,7 +39,8 @@ function VerificationRun({ runId }) {
         const detail = await verificationRunsApi.read(runId)
         const [definition, testCases] = await Promise.all([testSuitesApi.read(detail.test_suite_id), testCasesApi.list(detail.test_suite_id)])
         const owner = await projectsApi.read(definition.project_id)
-        if (active) { setRun(detail); setSuite(definition); setCases(testCases); setProject(owner) }
+        const comparisons = await verificationRunsApi.comparable(detail.test_suite_id)
+        if (active) { setRun(detail); setSuite(definition); setCases(testCases); setProject(owner); setComparableRuns(comparisons.filter((item) => item.id !== detail.id)); setBaselineRunId(comparisons.find((item) => item.id !== detail.id && new Date(item.created_at) < new Date(detail.created_at))?.id || '') }
       } catch (error) {
         if (!active) return
         if (error.code === 'unauthorized') logout('Your session expired. Sign in again.')
@@ -111,6 +114,7 @@ function VerificationRun({ runId }) {
     {error ? <div className="projects-state projects-state--error" role="alert"><p>{error}</p><button onClick={() => { setError(''); setAttempt((value) => value + 1) }}>Retry</button></div> : !run ? <div className="projects-state" role="status">Loading verification run...</div> : <>
       <section className="verification-summary"><div className="verification-back-links"><Link className="library-link-button" to={back}>Back to Test Library</Link><Link className="secondary-button" to={`/app/runs${typeof state?.runsSearch === 'string' && state.runsSearch ? `?${state.runsSearch}` : ''}`}>Back to Runs</Link><button type="button" className="secondary-button report-download-btn" disabled={generatingReport} onClick={handleDownloadReport} title="Generate and download official Proof of Verification PDF report">{generatingReport ? <LoaderCircle size={15} className="spin" /> : <FileText size={15} />}<span>{generatingReport ? 'Generating Report...' : 'Proof of Verification Report'}</span></button></div><p className="eyebrow">{project?.name} / {suite?.name}</p><div className="verification-title"><h2>{run.name}</h2><VerificationStatusBadge status={run.status} /></div>
         <div className="verification-dates"><span>Created: {formatRunDate(run.created_at)}</span>{run.started_at && <span>Started: {formatRunDate(run.started_at)}</span>}{run.completed_at && <span>Completed: {formatRunDate(run.completed_at)}</span>}</div>
+        <div className="run-comparison-picker"><label htmlFor="compare-run">Compare with…</label><select id="compare-run" value={baselineRunId} onChange={(event) => setBaselineRunId(event.target.value)} disabled={!baselineRunId && !comparableRuns.length}><option value="">Select an earlier completed run</option>{comparableRuns.filter((item) => new Date(item.created_at) < new Date(run.created_at)).map((item) => <option key={item.id} value={item.id}>{item.label} · {formatRunDate(item.created_at)}</option>)}</select>{baselineRunId ? <Link className="secondary-button" to={`/app/runs/compare?baseline=${baselineRunId}&target=${run.id}`}>Compare runs</Link> : <small>No earlier completed run is available to compare.</small>}</div>
         {run.quality_gate_evaluation && <QualityGateResult evaluation={run.quality_gate_evaluation} />}
         {run.trigger_source === 'github_pr' && (
           <div className="github-pr-banner">

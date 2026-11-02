@@ -4,7 +4,7 @@ import test from 'node:test'
 
 // Replace only Vite's build-time environment value to exercise the real client in Node.
 const source = (await readFile(new URL('../src/api/client.js', import.meta.url), 'utf8')).replace(/import\.meta\.env\.VITE_API_(URL|BASE_URL)/, '"http://verigate.test"')
-const { verificationRunsApi, testSuitesApi, sessionStore, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
+const { verificationRunsApi, testCasesApi, testSuitesApi, sessionStore, ApiError } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 const storage = new Map()
 globalThis.sessionStorage = { getItem: (key) => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: (key) => storage.delete(key) }
 const suiteId = '20fd236a-4e3a-4f1a-881b-2ab8da843d9f'
@@ -19,20 +19,24 @@ test('verification calls use existing paths, JSON bodies, and session bearer tok
   assert.equal(await verificationRunsApi.create(suiteId, { name: 'Regression' }), response)
   await verificationRunsApi.list(suiteId)
   await verificationRunsApi.read(runId)
+  await verificationRunsApi.comparable(suiteId)
+  await verificationRunsApi.compare(runId, resultId)
   await verificationRunsApi.updateResult(resultId, { status: 'failed', actual_result: '500', notes: 'Login failed' })
   await testSuitesApi.read(suiteId)
   assert.deepEqual(calls.map(({ url, method = 'GET' }) => [method, url]), [
     ['POST', `http://verigate.test/api/v1/test-suites/${suiteId}/verification-runs`],
     ['GET', `http://verigate.test/api/v1/test-suites/${suiteId}/verification-runs`],
     ['GET', `http://verigate.test/api/v1/verification-runs/${runId}`],
+    ['GET', `http://verigate.test/api/v1/test-suites/${suiteId}/comparable-runs`],
+    ['GET', `http://verigate.test/api/v1/verification-runs/${runId}/compare?baseline_run_id=${resultId}`],
     ['PATCH', `http://verigate.test/api/v1/verification-results/${resultId}`],
     ['GET', `http://verigate.test/api/v1/test-suites/${suiteId}`],
   ])
   for (const call of calls) assert.equal(call.headers.get('Authorization'), 'Bearer test-token')
   assert.deepEqual(JSON.parse(calls[0].body), { name: 'Regression' })
   assert.equal(calls[0].timeout, 90000)
-  assert.deepEqual(JSON.parse(calls[3].body), { status: 'failed', actual_result: '500', notes: 'Login failed' })
-  assert.equal(calls[3].headers.get('Content-Type'), 'application/json')
+  assert.deepEqual(JSON.parse(calls[5].body), { status: 'failed', actual_result: '500', notes: 'Login failed' })
+  assert.equal(calls[5].headers.get('Content-Type'), 'application/json')
 })
 
 test('API errors preserve backend messages and unauthorized classification', async () => {
@@ -40,6 +44,14 @@ test('API errors preserve backend messages and unauthorized classification', asy
     globalThis.fetch = async () => ({ ok: false, status, json: async () => ({ detail }) })
     await assert.rejects(verificationRunsApi.read(runId), (error) => error instanceof ApiError && error.status === status && error.message === detail && error.code === (status === 401 ? 'unauthorized' : 'request_failed'))
   }
+})
+
+test('test-case delete preserves the run-history conflict message', async () => {
+  globalThis.fetch = async () => ({ ok: false, status: 409, json: async () => ({ detail: 'This test case has run history and cannot be deleted. Deactivate it instead.' }) })
+  await assert.rejects(
+    testCasesApi.remove('808676af-e425-4ed3-a5a0-c049633ee17f'),
+    (error) => error instanceof ApiError && error.status === 409 && error.message === 'This test case has run history and cannot be deleted. Deactivate it instead.',
+  )
 })
 
 test('network failures use the existing unavailable error', async () => {

@@ -96,6 +96,33 @@ def test_create_run_snapshots_active_test_cases(client: TestClient) -> None:
     assert {result["status"] for result in run["results"]} == {"pending"}
 
 
+def test_deactivated_case_is_skipped_by_new_runs_but_remains_in_history(
+    client: TestClient,
+) -> None:
+    headers, suite_id = create_run_context(client, "inactive.history@example.com")
+    original_run = start_run(client, headers, suite_id)
+    historical_case_id = original_run["results"][0]["test_case_id"]
+
+    deactivated = client.patch(
+        f"/api/v1/test-cases/{historical_case_id}",
+        headers=headers,
+        json={"is_active": False},
+    )
+    assert deactivated.status_code == 200
+    assert deactivated.json()["is_active"] is False
+
+    next_run = start_run(client, headers, suite_id)
+    assert [result["test_case_id"] for result in next_run["results"]] != [
+        historical_case_id
+    ]
+
+    historical_detail = client.get(
+        f"/api/v1/verification-runs/{original_run['id']}", headers=headers
+    )
+    assert historical_detail.status_code == 200
+    assert historical_detail.json()["results"][0]["test_case_id"] == historical_case_id
+
+
 def test_cannot_create_run_without_active_cases(client: TestClient) -> None:
     headers = authenticated_headers(client, "empty.run@example.com")
     suite_id = create_suite(client, headers)

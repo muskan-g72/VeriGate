@@ -127,6 +127,8 @@ export const verificationRunsApi = {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), timeout: 90000,
   }),
   read: (runId) => request(`/api/v1/verification-runs/${runId}`),
+  comparable: (suiteId) => request(`/api/v1/test-suites/${suiteId}/comparable-runs`),
+  compare: (targetId, baselineId) => request(`/api/v1/verification-runs/${targetId}/compare?baseline_run_id=${encodeURIComponent(baselineId)}`),
   qualityGate: (runId) => request(`/api/v1/verification-runs/${runId}/quality-gate`),
   updateResult: (resultId, data) => request(`/api/v1/verification-results/${resultId}`, {
     method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
