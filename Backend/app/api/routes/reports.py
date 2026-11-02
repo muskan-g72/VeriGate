@@ -15,6 +15,8 @@ from app.schemas.report import (
     ProjectReportResponse,
     VerificationTrendPoint,
 )
+from app.schemas.flaky_test import FlakyTestRead
+from app.services.flaky_test_service import list_flaky_tests
 from app.services.report_generator import (
     build_verification_run_report_data,
     generate_verification_report_html,
@@ -81,6 +83,19 @@ def get_issue_report(
         VIEW_PROJECT_ROLES,
     )
     return build_issue_report(database_session, project_id)
+
+
+@router.get(
+    "/projects/{project_id}/reports/flaky-tests",
+    response_model=list[FlakyTestRead],
+)
+def get_flaky_tests(
+    project_id: uuid.UUID,
+    current_user: CurrentUser,
+    database_session: Annotated[Session, Depends(get_db)],
+) -> list[dict]:
+    get_accessible_project(database_session, project_id, current_user, VIEW_PROJECT_ROLES)
+    return list_flaky_tests(database_session, project_id)
 
 
 @router.get("/verification-runs/{verification_run_id}/report")
