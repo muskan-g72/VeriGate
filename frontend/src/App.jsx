@@ -33,6 +33,7 @@ import { TestSuitesPage } from './pages/TestSuitesPage'
 import { UnauthorizedPage } from './pages/UnauthorizedPage'
 import { UserDashboardPage } from './pages/UserDashboardPage'
 import { VerificationRunPage } from './pages/VerificationRunPage'
+import { ScheduledRunsPage } from './pages/ScheduledRunsPage'
 
 function ProtectedRoute({ children, requireAdmin = false }) {
   const { status, isAdmin } = useAuth()
@@ -111,6 +112,7 @@ export default function App() {
         >
           <Route index element={<OverviewPage />} />
           <Route path="runs" element={<RunsPage />} />
+          <Route path="scheduled-runs" element={<ScheduledRunsPage />} />
           <Route path="runs/compare" element={<RunComparisonPage />} />
           <Route path="issues" element={<IssuesPage />} />
           <Route path="issues/:issueId" element={<IssueDetailPage />} />

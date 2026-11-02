@@ -16,6 +16,7 @@ import {
   Settings,
   Shield,
   TestTube2,
+  CalendarClock,
   FileCheck2,
   Users,
   X,
@@ -72,6 +73,7 @@ const userNavGroups = [
       [Gauge, 'Dashboard', '/dashboard'],
       [Boxes, 'My Projects', '/app/projects'],
       [Play, 'Verification Runs', '/app/runs'],
+      [CalendarClock, 'Scheduled Runs', '/app/scheduled-runs'],
     ],
   ],
   [
@@ -129,6 +131,7 @@ export function AppShell() {
     '/admin/settings': 'System Settings',
     '/app': 'Command Center',
     '/app/runs': 'Runs',
+    '/app/scheduled-runs': 'Scheduled Runs',
     '/app/projects': 'Projects',
     '/app/test-library': 'Test Library',
     '/app/test-suites': 'Test Suites',

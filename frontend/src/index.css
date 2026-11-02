@@ -2309,6 +2309,17 @@ body:not(.has-landing) .gate-mark__left,body:not(.has-landing) .gate-mark__node-
   gap: 1rem;
 }
 
+.scheduled-runs-form > label { display: grid; gap: 7px; color: var(--text-2); font-size: 13px; }
+.scheduled-runs-form input,
+.scheduled-runs-form select {
+  width: 100%; max-width: 420px; height: 44px; padding: 0 12px;
+  border: 1px solid rgba(255,255,255,.12); border-radius: 10px;
+  background: rgba(255,255,255,.035); color: var(--text); font: 13px var(--sans);
+}
+.scheduled-runs-form input:focus,
+.scheduled-runs-form select:focus { outline: 0; border-color: #c026d3; box-shadow: 0 0 0 3px rgba(217,70,239,.12); }
+.scheduled-runs-form select option { background: #17121e; color: var(--text); }
+
 .form-row-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

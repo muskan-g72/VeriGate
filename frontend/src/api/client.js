@@ -109,6 +109,13 @@ export const testSuitesApi = {
   remove: (suiteId) => request(`/api/v1/test-suites/${suiteId}`, { method: 'DELETE' }),
 }
 
+export const scheduledRunsApi = {
+  list: (suiteId) => request(`/api/v1/test-suites/${suiteId}/scheduled-runs`),
+  create: (suiteId, data) => request(`/api/v1/test-suites/${suiteId}/scheduled-runs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  update: (scheduleId, data) => request(`/api/v1/scheduled-runs/${scheduleId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }),
+  runNow: (scheduleId) => request(`/api/v1/scheduled-runs/${scheduleId}/run-now`, { method: 'POST' }),
+}
+
 export const dashboardApi = {
   summary: (projectId = null) => request(`/api/v1/dashboard/summary${projectId ? `?project_id=${projectId}` : ''}`),
   projectSummary: (projectId) => request(`/api/v1/projects/${projectId}/summary`),
