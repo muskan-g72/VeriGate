@@ -79,3 +79,63 @@ class VerificationRunRead(BaseModel):
 
 class VerificationRunDetail(VerificationRunRead):
     results: list[VerificationResultRead]
+
+
+class ComparableRunRead(BaseModel):
+    id: uuid.UUID
+    label: str
+    created_at: datetime
+    status: RunStatus
+    pass_rate: float | None = None
+    gate_outcome: str | None = None
+
+
+class RunComparisonRunRead(BaseModel):
+    id: uuid.UUID
+    name: str
+    status: RunStatus
+    created_at: datetime
+    completed_at: datetime | None = None
+    pr_number: int | None = None
+    pr_commit_sha: str | None = None
+    gate_outcome: str | None = None
+
+
+class RunComparisonRow(BaseModel):
+    test_case_id: uuid.UUID
+    title: str
+    priority: str
+    execution_mode: str
+    category: str
+    baseline_status: str | None = None
+    target_status: str | None = None
+    baseline_result_id: uuid.UUID | None = None
+    target_result_id: uuid.UUID | None = None
+    baseline_duration: float | None = None
+    target_duration: float | None = None
+    duration_delta: float | None = None
+    duration_absolute_delta: float | None = None
+    duration_percent_delta: float | None = None
+    slower: bool = False
+    faster: bool = False
+    target_failure_message: str | None = None
+
+
+class RunComparisonSummary(BaseModel):
+    counts: dict[str, int]
+    baseline_pass_rate: float | None = None
+    target_pass_rate: float | None = None
+    pass_rate_delta: float | None = None
+    baseline_total_duration: float = 0
+    target_total_duration: float = 0
+    total_duration_delta: float = 0
+    slower_count: int = 0
+    faster_count: int = 0
+
+
+class RunComparisonRead(BaseModel):
+    baseline: RunComparisonRunRead
+    target: RunComparisonRunRead
+    summary: RunComparisonSummary
+    rows: list[RunComparisonRow]
+    gate_changed: bool = False

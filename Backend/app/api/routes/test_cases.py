@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser
@@ -11,6 +12,7 @@ from app.api.routes.test_suites import get_owned_test_suite
 from app.core.permissions import MANAGE_TEST_ASSET_ROLES, VIEW_PROJECT_ROLES
 from app.db.session import get_db
 from app.models.test_case import TestCase
+from app.models.verification_result import VerificationResult
 from app.schemas.test_case import (
     TestCaseCreate,
     TestCaseRead,
@@ -157,14 +159,23 @@ def update_test_case(
         database_session,
         MANAGE_TEST_ASSET_ROLES,
     )
+    if "is_active" in updates:
+        action = "activated" if test_case.is_active else "deactivated"
+        description = (
+            f"{'Activated' if test_case.is_active else 'Deactivated'} "
+            f"test case '{test_case.title}'"
+        )
+    else:
+        action = "updated"
+        description = f"Updated test case '{test_case.title}'"
     record_audit_event(
         database_session,
         user_id=current_user.id,
         project_id=test_suite.project_id,
-        action="updated",
+        action=action,
         resource_type="test_case",
         resource_id=test_case.id,
-        description=f"Updated test case '{test_case.title}'",
+        description=description,
     )
     database_session.commit()
     database_session.refresh(test_case)
@@ -192,6 +203,33 @@ def delete_test_case(
         database_session,
         MANAGE_TEST_ASSET_ROLES,
     )
+    has_results = database_session.scalar(
+        select(VerificationResult.id)
+        .where(VerificationResult.test_case_id == test_case.id)
+        .limit(1)
+    )
+    if has_results is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This test case has run history and cannot be deleted. "
+                "Deactivate it instead."
+            ),
+        )
+
+    database_session.delete(test_case)
+    try:
+        database_session.flush()
+    except IntegrityError as exc:
+        database_session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This test case has run history and cannot be deleted. "
+                "Deactivate it instead."
+            ),
+        ) from exc
+
     record_audit_event(
         database_session,
         user_id=current_user.id,
@@ -201,6 +239,5 @@ def delete_test_case(
         resource_id=test_case.id,
         description=f"Deleted test case '{test_case.title}'",
     )
-    database_session.delete(test_case)
     database_session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

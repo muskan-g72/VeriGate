@@ -1,102 +1,156 @@
-import { ArrowRight, BookOpen, CheckCircle2, ChevronRight, FileCheck2, Layers3, LoaderCircle, Pencil, Plus, Power, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { projectsApi, testCasesApi, testSuitesApi } from '../api/client'
-import { AutomationStepBuilder } from '../components/AutomationStepBuilder'
-import { StartVerificationDialog, VerificationHistory } from '../components/VerificationRuns'
-import { chooseProject, rememberProject } from '../testLibrary/projectSelection'
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  ChevronRight,
+  FileCheck2,
+  Layers3,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  Power,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { projectsApi, testCasesApi, testSuitesApi } from "../api/client";
+import { AutomationStepBuilder } from "../components/AutomationStepBuilder";
+import {
+  StartVerificationDialog,
+  VerificationHistory,
+} from "../components/VerificationRuns";
+import {
+  chooseProject,
+  rememberProject,
+} from "../testLibrary/projectSelection";
 
-export function LibraryDialog({ kind, item, parentId, parentOptions = [], onClose, onSaved }) {
-  const isCase = kind === 'case'
-  const [form, setForm] = useState(() => isCase ? {
-    title: item?.title || '',
-    description: item?.description || '',
-    steps: item?.steps || '',
-    expected_result: item?.expected_result || '',
-    priority: item?.priority || 'medium',
-    is_active: item?.is_active ?? true,
-    execution_mode: item?.execution_mode || 'manual',
-    automation_steps: item?.automation_steps || [],
-  } : { name: item?.name || '', description: item?.description || '' })
-  const [errors, setErrors] = useState({})
-  const [serverError, setServerError] = useState('')
-  const [pending, setPending] = useState(false)
-  const [selectedParentId, setSelectedParentId] = useState(parentId || parentOptions[0]?.id || '')
-  const firstInput = useRef(null)
-  const backdropMouseDown = useRef(false)
-  useEffect(() => { firstInput.current?.focus() }, [])
-  useEffect(() => { const close = (event) => event.key === 'Escape' && onClose(); document.addEventListener('keydown', close); return () => document.removeEventListener('keydown', close) }, [onClose])
+export function LibraryDialog({
+  kind,
+  item,
+  parentId,
+  parentOptions = [],
+  onClose,
+  onSaved,
+}) {
+  const isCase = kind === "case";
+  const [form, setForm] = useState(() =>
+    isCase
+      ? {
+          title: item?.title || "",
+          description: item?.description || "",
+          steps: item?.steps || "",
+          expected_result: item?.expected_result || "",
+          priority: item?.priority || "medium",
+          is_active: item?.is_active ?? true,
+          execution_mode: item?.execution_mode || "manual",
+          automation_steps: item?.automation_steps || [],
+        }
+      : { name: item?.name || "", description: item?.description || "" },
+  );
+  const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState("");
+  const [pending, setPending] = useState(false);
+  const [selectedParentId, setSelectedParentId] = useState(
+    parentId || parentOptions[0]?.id || "",
+  );
+  const firstInput = useRef(null);
+  const backdropMouseDown = useRef(false);
+  useEffect(() => {
+    firstInput.current?.focus();
+  }, []);
+  useEffect(() => {
+    const close = (event) => event.key === "Escape" && onClose();
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [onClose]);
 
   function handleBackdropMouseDown(event) {
-    backdropMouseDown.current = event.target === event.currentTarget
+    backdropMouseDown.current = event.target === event.currentTarget;
   }
 
   function handleBackdropMouseUp(event) {
-    const shouldClose = backdropMouseDown.current && event.target === event.currentTarget
-    backdropMouseDown.current = false
-    if (shouldClose) onClose()
+    const shouldClose =
+      backdropMouseDown.current && event.target === event.currentTarget;
+    backdropMouseDown.current = false;
+    if (shouldClose) onClose();
   }
 
   async function submit(event) {
-    event.preventDefault()
-    const next = {}
-    if (!(isCase ? form.title : form.name)?.trim()) next.name = `Enter a ${isCase ? 'test case title' : 'suite name'}.`
+    event.preventDefault();
+    const next = {};
+    if (!(isCase ? form.title : form.name)?.trim())
+      next.name = `Enter a ${isCase ? "test case title" : "suite name"}.`;
     if (isCase) {
-      if (form.execution_mode === 'automated') {
+      if (form.execution_mode === "automated") {
         if (!form.automation_steps || form.automation_steps.length === 0) {
-          next.automation_steps = 'Automated test cases require at least one automation step.'
+          next.automation_steps =
+            "Automated test cases require at least one automation step.";
         } else {
           for (let i = 0; i < form.automation_steps.length; i++) {
-            const s = form.automation_steps[i]
-            if (s.action === 'goto' && !s.value?.trim()) {
-              next.automation_steps = `Step ${i + 1} (goto) requires a target URL.`
-              break
+            const s = form.automation_steps[i];
+            if (s.action === "goto" && !s.value?.trim()) {
+              next.automation_steps = `Step ${i + 1} (goto) requires a target URL.`;
+              break;
             }
-            if (s.action === 'click' && !s.selector?.trim()) {
-              next.automation_steps = `Step ${i + 1} (click) requires a target selector.`
-              break
+            if (s.action === "click" && !s.selector?.trim()) {
+              next.automation_steps = `Step ${i + 1} (click) requires a target selector.`;
+              break;
             }
-            if (s.action === 'fill' && (!s.selector?.trim() || s.value === undefined || s.value === null || s.value === '')) {
-              next.automation_steps = `Step ${i + 1} (fill) requires both a selector and a value.`
-              break
+            if (
+              s.action === "fill" &&
+              (!s.selector?.trim() ||
+                s.value === undefined ||
+                s.value === null ||
+                s.value === "")
+            ) {
+              next.automation_steps = `Step ${i + 1} (fill) requires both a selector and a value.`;
+              break;
             }
-            if (s.action === 'expect_text' && !s.value?.trim()) {
-              next.automation_steps = `Step ${i + 1} (expect_text) requires expected text.`
-              break
+            if (s.action === "expect_text" && !s.value?.trim()) {
+              next.automation_steps = `Step ${i + 1} (expect_text) requires expected text.`;
+              break;
             }
-            if (s.action === 'expect_title' && !s.value?.trim()) {
-              next.automation_steps = `Step ${i + 1} (expect_title) requires an expected page title.`
-              break
+            if (s.action === "expect_title" && !s.value?.trim()) {
+              next.automation_steps = `Step ${i + 1} (expect_title) requires an expected page title.`;
+              break;
             }
           }
         }
       }
-      if (!form.steps?.trim() && form.execution_mode === 'manual') {
-        next.steps = 'Describe the steps to execute.'
+      if (!form.steps?.trim() && form.execution_mode === "manual") {
+        next.steps = "Describe the steps to execute.";
       }
-      if (!form.expected_result?.trim() && form.execution_mode === 'manual') {
-        next.expected_result = 'Describe the expected result.'
+      if (!form.expected_result?.trim() && form.execution_mode === "manual") {
+        next.expected_result = "Describe the expected result.";
       }
     }
-    setErrors(next); setServerError('')
+    setErrors(next);
+    setServerError("");
     if (!isCase && !parentId) {
-      setServerError('No project selected. Please select a project first.')
-      return
+      setServerError("No project selected. Please select a project first.");
+      return;
     }
     if (isCase && !item && !selectedParentId) {
-      setServerError('No test suite selected. Please select or create a test suite first.')
-      return
+      setServerError(
+        "No test suite selected. Please select or create a test suite first.",
+      );
+      return;
     }
-    setPending(true)
+    setPending(true);
     try {
-      let payload
+      let payload;
       if (isCase) {
-        const effectiveSteps = form.execution_mode === 'automated'
-          ? (form.steps?.trim() || `Automated Playwright test with ${form.automation_steps?.length || 0} steps.`)
-          : (form.steps?.trim() || '')
-        const effectiveExpected = form.execution_mode === 'automated'
-          ? (form.expected_result?.trim() || 'All automated Playwright steps pass successfully.')
-          : (form.expected_result?.trim() || '')
+        const effectiveSteps =
+          form.execution_mode === "automated"
+            ? form.steps?.trim() ||
+              `Automated Playwright test with ${form.automation_steps?.length || 0} steps.`
+            : form.steps?.trim() || "";
+        const effectiveExpected =
+          form.execution_mode === "automated"
+            ? form.expected_result?.trim() ||
+              "All automated Playwright steps pass successfully."
+            : form.expected_result?.trim() || "";
 
         payload = {
           ...form,
@@ -105,115 +159,769 @@ export function LibraryDialog({ kind, item, parentId, parentOptions = [], onClos
           steps: effectiveSteps,
           expected_result: effectiveExpected,
           execution_mode: form.execution_mode,
-          automation_steps: form.execution_mode === 'automated' ? form.automation_steps : null,
-        }
+          automation_steps:
+            form.execution_mode === "automated" ? form.automation_steps : null,
+        };
       } else {
         payload = {
           name: form.name.trim(),
           description: form.description?.trim() || null,
-        }
+        };
       }
 
       const saved = isCase
-        ? (item ? await testCasesApi.update(item.id, payload) : await testCasesApi.create(selectedParentId, payload))
-        : (item ? await testSuitesApi.update(item.id, payload) : await testSuitesApi.create(parentId, payload))
-      onSaved(saved)
+        ? item
+          ? await testCasesApi.update(item.id, payload)
+          : await testCasesApi.create(selectedParentId, payload)
+        : item
+          ? await testSuitesApi.update(item.id, payload)
+          : await testSuitesApi.create(parentId, payload);
+      onSaved(saved);
     } catch (error) {
-      setServerError(error.message)
+      setServerError(error.message);
     } finally {
-      setPending(false)
+      setPending(false);
     }
   }
 
-  const title = `${item ? 'Edit' : 'Create'} test ${isCase ? 'case' : 'suite'}`
-  return <div className="dialog-backdrop library-dialog-backdrop" onMouseDown={handleBackdropMouseDown} onMouseUp={handleBackdropMouseUp}><section className="project-dialog library-dialog" role="dialog" aria-modal="true" aria-labelledby="library-dialog-title">
-    <header><div><p className="eyebrow">Test definition</p><h2 id="library-dialog-title">{title}</h2></div><button type="button" onClick={onClose} aria-label="Close"><X /></button></header>
-    <form onSubmit={submit} noValidate>{serverError && <div className="form-alert" role="alert"><strong>Unable to save</strong><span>{serverError}</span></div>}
-      <div className="field"><label htmlFor="definition-name">{isCase ? 'Title' : 'Suite name'}</label><input ref={firstInput} id="definition-name" maxLength={isCase ? 160 : 120} value={isCase ? form.title : form.name} disabled={pending} aria-invalid={Boolean(errors.name)} onChange={(event) => setForm({ ...form, [isCase ? 'title' : 'name']: event.target.value })} placeholder={isCase ? 'Valid user can sign in' : 'Authentication'} /><div className={`field-error ${errors.name ? 'is-visible' : ''}`} role="alert">{errors.name}</div></div>
-      {isCase && !item && parentOptions.length > 0 && <div className="field"><label htmlFor="case-suite">Test suite</label><select id="case-suite" value={selectedParentId} disabled={pending} onChange={(event) => setSelectedParentId(event.target.value)} required>{parentOptions.map((suite) => <option value={suite.id} key={suite.id}>{suite.name}</option>)}</select></div>}
-      <div className="field"><label htmlFor="definition-description">Description <span>Optional</span></label><textarea id="definition-description" rows="3" value={form.description} disabled={pending} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Describe the verification scope." /></div>
-      {isCase && <>
-        <div className="field">
-          <label>Execution mode</label>
-          <div className="mode-toggle-group" role="radiogroup" aria-label="Execution mode">
-            <button
-              type="button"
-              className={`mode-toggle-btn ${form.execution_mode === 'manual' ? 'is-active' : ''}`}
-              onClick={() => setForm({ ...form, execution_mode: 'manual' })}
-              disabled={pending}
-            >
-              Manual
-            </button>
-            <button
-              type="button"
-              className={`mode-toggle-btn ${form.execution_mode === 'automated' ? 'is-active' : ''}`}
-              onClick={() => {
-                const initialSteps = form.automation_steps?.length ? form.automation_steps : [{ action: 'goto', value: '' }]
-                setForm({ ...form, execution_mode: 'automated', automation_steps: initialSteps })
-              }}
-              disabled={pending}
-            >
-              Automated (Playwright)
-            </button>
+  const title = `${item ? "Edit" : "Create"} test ${isCase ? "case" : "suite"}`;
+  return (
+    <div
+      className="dialog-backdrop library-dialog-backdrop"
+      onMouseDown={handleBackdropMouseDown}
+      onMouseUp={handleBackdropMouseUp}
+    >
+      <section
+        className="project-dialog library-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="library-dialog-title"
+      >
+        <header>
+          <div>
+            <p className="eyebrow">Test definition</p>
+            <h2 id="library-dialog-title">{title}</h2>
           </div>
-        </div>
-        {form.execution_mode === 'automated' ? (
-          <div className="automation-section">
-            <AutomationStepBuilder
-              steps={form.automation_steps}
+          <button type="button" onClick={onClose} aria-label="Close">
+            <X />
+          </button>
+        </header>
+        <form onSubmit={submit} noValidate>
+          {serverError && (
+            <div className="form-alert" role="alert">
+              <strong>Unable to save</strong>
+              <span>{serverError}</span>
+            </div>
+          )}
+          <div className="field">
+            <label htmlFor="definition-name">
+              {isCase ? "Title" : "Suite name"}
+            </label>
+            <input
+              ref={firstInput}
+              id="definition-name"
+              maxLength={isCase ? 160 : 120}
+              value={isCase ? form.title : form.name}
               disabled={pending}
-              onChange={(steps) => setForm({ ...form, automation_steps: steps })}
+              aria-invalid={Boolean(errors.name)}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  [isCase ? "title" : "name"]: event.target.value,
+                })
+              }
+              placeholder={isCase ? "Valid user can sign in" : "Authentication"}
             />
-            {errors.automation_steps && <div className="field-error is-visible" role="alert">{errors.automation_steps}</div>}
+            <div
+              className={`field-error ${errors.name ? "is-visible" : ""}`}
+              role="alert"
+            >
+              {errors.name}
+            </div>
           </div>
-        ) : (
-          <>
-            <div className="field"><label htmlFor="case-steps">Execution steps</label><textarea id="case-steps" rows="4" value={form.steps} disabled={pending} aria-invalid={Boolean(errors.steps)} onChange={(event) => setForm({ ...form, steps: event.target.value })} placeholder={'1. Enter valid credentials\n2. Submit the login form'} /><div className={`field-error ${errors.steps ? 'is-visible' : ''}`} role="alert">{errors.steps}</div></div>
-            <div className="field"><label htmlFor="case-expected">Expected result</label><textarea id="case-expected" rows="3" value={form.expected_result} disabled={pending} aria-invalid={Boolean(errors.expected_result)} onChange={(event) => setForm({ ...form, expected_result: event.target.value })} placeholder="The user is authenticated and redirected." /><div className={`field-error ${errors.expected_result ? 'is-visible' : ''}`} role="alert">{errors.expected_result}</div></div>
-          </>
-        )}
-        <div className="library-form-row"><div className="field"><label htmlFor="case-priority">Priority</label><select id="case-priority" value={form.priority} disabled={pending} onChange={(event) => setForm({ ...form, priority: event.target.value })}><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select></div>{item && <label className="active-toggle"><input type="checkbox" checked={form.is_active} disabled={pending} onChange={(event) => setForm({ ...form, is_active: event.target.checked })} /><span>Active test case</span></label>}</div>
-      </>}
-      <footer><button type="button" className="secondary-button" onClick={onClose}>Cancel</button><button className="primary-button" disabled={pending}>{pending ? <><LoaderCircle className="spinner" />Saving...</> : <>Save {isCase ? 'case' : 'suite'}<ArrowRight /></>}</button></footer>
-    </form>
-  </section></div>
+          {isCase && !item && parentOptions.length > 0 && (
+            <div className="field">
+              <label htmlFor="case-suite">Test suite</label>
+              <select
+                id="case-suite"
+                value={selectedParentId}
+                disabled={pending}
+                onChange={(event) => setSelectedParentId(event.target.value)}
+                required
+              >
+                {parentOptions.map((suite) => (
+                  <option value={suite.id} key={suite.id}>
+                    {suite.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="field">
+            <label htmlFor="definition-description">
+              Description <span>Optional</span>
+            </label>
+            <textarea
+              id="definition-description"
+              rows="3"
+              value={form.description}
+              disabled={pending}
+              onChange={(event) =>
+                setForm({ ...form, description: event.target.value })
+              }
+              placeholder="Describe the verification scope."
+            />
+          </div>
+          {isCase && (
+            <>
+              <div className="field">
+                <label>Execution mode</label>
+                <div
+                  className="mode-toggle-group"
+                  role="radiogroup"
+                  aria-label="Execution mode"
+                >
+                  <button
+                    type="button"
+                    className={`mode-toggle-btn ${form.execution_mode === "manual" ? "is-active" : ""}`}
+                    onClick={() =>
+                      setForm({ ...form, execution_mode: "manual" })
+                    }
+                    disabled={pending}
+                  >
+                    Manual
+                  </button>
+                  <button
+                    type="button"
+                    className={`mode-toggle-btn ${form.execution_mode === "automated" ? "is-active" : ""}`}
+                    onClick={() => {
+                      const initialSteps = form.automation_steps?.length
+                        ? form.automation_steps
+                        : [{ action: "goto", value: "" }];
+                      setForm({
+                        ...form,
+                        execution_mode: "automated",
+                        automation_steps: initialSteps,
+                      });
+                    }}
+                    disabled={pending}
+                  >
+                    Automated (Playwright)
+                  </button>
+                </div>
+              </div>
+              {form.execution_mode === "automated" ? (
+                <div className="automation-section">
+                  <AutomationStepBuilder
+                    steps={form.automation_steps}
+                    disabled={pending}
+                    onChange={(steps) =>
+                      setForm({ ...form, automation_steps: steps })
+                    }
+                  />
+                  {errors.automation_steps && (
+                    <div className="field-error is-visible" role="alert">
+                      {errors.automation_steps}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div className="field">
+                    <label htmlFor="case-steps">Execution steps</label>
+                    <textarea
+                      id="case-steps"
+                      rows="4"
+                      value={form.steps}
+                      disabled={pending}
+                      aria-invalid={Boolean(errors.steps)}
+                      onChange={(event) =>
+                        setForm({ ...form, steps: event.target.value })
+                      }
+                      placeholder={
+                        "1. Enter valid credentials\n2. Submit the login form"
+                      }
+                    />
+                    <div
+                      className={`field-error ${errors.steps ? "is-visible" : ""}`}
+                      role="alert"
+                    >
+                      {errors.steps}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="case-expected">Expected result</label>
+                    <textarea
+                      id="case-expected"
+                      rows="3"
+                      value={form.expected_result}
+                      disabled={pending}
+                      aria-invalid={Boolean(errors.expected_result)}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          expected_result: event.target.value,
+                        })
+                      }
+                      placeholder="The user is authenticated and redirected."
+                    />
+                    <div
+                      className={`field-error ${errors.expected_result ? "is-visible" : ""}`}
+                      role="alert"
+                    >
+                      {errors.expected_result}
+                    </div>
+                  </div>
+                </>
+              )}
+              <div className="library-form-row">
+                <div className="field">
+                  <label htmlFor="case-priority">Priority</label>
+                  <select
+                    id="case-priority"
+                    value={form.priority}
+                    disabled={pending}
+                    onChange={(event) =>
+                      setForm({ ...form, priority: event.target.value })
+                    }
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                </div>
+                {item && (
+                  <label className="active-toggle">
+                    <input
+                      type="checkbox"
+                      checked={form.is_active}
+                      disabled={pending}
+                      onChange={(event) =>
+                        setForm({ ...form, is_active: event.target.checked })
+                      }
+                    />
+                    <span>Active test case</span>
+                  </label>
+                )}
+              </div>
+            </>
+          )}
+          <footer>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={onClose}
+            >
+              Cancel
+            </button>
+            <button className="primary-button" disabled={pending}>
+              {pending ? (
+                <>
+                  <LoaderCircle className="spinner" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  Save {isCase ? "case" : "suite"}
+                  <ArrowRight />
+                </>
+              )}
+            </button>
+          </footer>
+        </form>
+      </section>
+    </div>
+  );
 }
 
 export function TestLibraryPage() {
-  const [searchParams] = useSearchParams()
-  const requestedProject = searchParams.get('projectId')
-  const requestedSuite = searchParams.get('suiteId')
-  const [starting, setStarting] = useState(false)
-  const [casesStatus, setCasesStatus] = useState('loading')
-  const [caseAttempt, setCaseAttempt] = useState(0)
-  const [projects, setProjects] = useState([])
-  const [projectId, setProjectId] = useState('')
-  const [suites, setSuites] = useState([])
-  const [suiteId, setSuiteId] = useState('')
-  const [cases, setCases] = useState([])
-  const [status, setStatus] = useState('loading')
-  const [error, setError] = useState('')
-  const [dialog, setDialog] = useState(null)
+  const [searchParams] = useSearchParams();
+  const requestedProject = searchParams.get("projectId");
+  const requestedSuite = searchParams.get("suiteId");
+  const [starting, setStarting] = useState(false);
+  const [casesStatus, setCasesStatus] = useState("loading");
+  const [caseAttempt, setCaseAttempt] = useState(0);
+  const [projects, setProjects] = useState([]);
+  const [projectId, setProjectId] = useState("");
+  const [suites, setSuites] = useState([]);
+  const [suiteId, setSuiteId] = useState("");
+  const [cases, setCases] = useState([]);
+  const [status, setStatus] = useState("loading");
+  const [error, setError] = useState("");
+  const [dialog, setDialog] = useState(null);
+  const [deleteConflict, setDeleteConflict] = useState(null);
 
-  useEffect(() => { let active = true; projectsApi.list().then((items) => { if (!active) return; const selected = items.some((item) => item.id === requestedProject) ? requestedProject : chooseProject(items); setProjects(items); setProjectId(selected); setStatus(items.length ? 'loading' : 'ready') }).catch((requestError) => { if (active) { setError(requestError.message); setStatus('error') } }); return () => { active = false } }, [requestedProject])
-  useEffect(() => { if (!projectId) return undefined; let active = true; testSuitesApi.list(projectId).then((items) => { if (!active) return; setSuites(items); setSuiteId((current) => items.some((suite) => suite.id === current) ? current : items.find((suite) => suite.id === requestedSuite)?.id || items[0]?.id || ''); setStatus('ready') }).catch((requestError) => { if (active) { setError(requestError.message); setStatus('error') } }); return () => { active = false } }, [projectId, requestedSuite])
-  useEffect(() => { if (!suiteId) return undefined; let active = true; testCasesApi.list(suiteId).then((items) => { if (active) { setCases(items); setCasesStatus('ready') } }).catch((requestError) => { if (active) { setError(requestError.message); setCasesStatus('error') } }); return () => { active = false } }, [suiteId, caseAttempt])
+  useEffect(() => {
+    let active = true;
+    projectsApi
+      .list()
+      .then((items) => {
+        if (!active) return;
+        const selected = items.some((item) => item.id === requestedProject)
+          ? requestedProject
+          : chooseProject(items);
+        setProjects(items);
+        setProjectId(selected);
+        setStatus(items.length ? "loading" : "ready");
+      })
+      .catch((requestError) => {
+        if (active) {
+          setError(requestError.message);
+          setStatus("error");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [requestedProject]);
+  useEffect(() => {
+    if (!projectId) return undefined;
+    let active = true;
+    testSuitesApi
+      .list(projectId)
+      .then((items) => {
+        if (!active) return;
+        setSuites(items);
+        setSuiteId((current) =>
+          items.some((suite) => suite.id === current)
+            ? current
+            : items.find((suite) => suite.id === requestedSuite)?.id ||
+              items[0]?.id ||
+              "",
+        );
+        setStatus("ready");
+      })
+      .catch((requestError) => {
+        if (active) {
+          setError(requestError.message);
+          setStatus("error");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId, requestedSuite]);
+  useEffect(() => {
+    if (!suiteId) return undefined;
+    let active = true;
+    testCasesApi
+      .list(suiteId)
+      .then((items) => {
+        if (active) {
+          setCases(items);
+          setCasesStatus("ready");
+        }
+      })
+      .catch((requestError) => {
+        if (active) {
+          setError(requestError.message);
+          setCasesStatus("error");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [suiteId, caseAttempt]);
 
-  const selectedProject = projects.find((project) => project.id === projectId)
-  const selectedSuite = suites.find((suite) => suite.id === suiteId)
-  function savedSuite(saved) { if (saved.id !== suiteId) { setCasesStatus('loading'); setCases([]) } setSuites((current) => current.some((suite) => suite.id === saved.id) ? current.map((suite) => suite.id === saved.id ? saved : suite) : [saved, ...current]); setSuiteId(saved.id); setDialog(null) }
-  function savedCase(saved) { setCases((current) => current.some((testCase) => testCase.id === saved.id) ? current.map((testCase) => testCase.id === saved.id ? saved : testCase) : [saved, ...current]); setDialog(null) }
-  async function toggleCase(testCase) { try { const saved = await testCasesApi.update(testCase.id, { is_active: !testCase.is_active }); savedCase(saved) } catch (requestError) { setError(requestError.message) } }
-  function changeProject(nextProjectId) { rememberProject(nextProjectId); setProjectId(nextProjectId); setCasesStatus('loading'); setSuites([]); setSuiteId(''); setCases([]); setStatus('loading'); setError('') }
+  const selectedProject = projects.find((project) => project.id === projectId);
+  const selectedSuite = suites.find((suite) => suite.id === suiteId);
+  function savedSuite(saved) {
+    if (saved.id !== suiteId) {
+      setCasesStatus("loading");
+      setCases([]);
+    }
+    setSuites((current) =>
+      current.some((suite) => suite.id === saved.id)
+        ? current.map((suite) => (suite.id === saved.id ? saved : suite))
+        : [saved, ...current],
+    );
+    setSuiteId(saved.id);
+    setDialog(null);
+  }
+  function savedCase(saved) {
+    setCases((current) =>
+      current.some((testCase) => testCase.id === saved.id)
+        ? current.map((testCase) =>
+            testCase.id === saved.id ? saved : testCase,
+          )
+        : [saved, ...current],
+    );
+    setDialog(null);
+  }
+  async function toggleCase(testCase) {
+    try {
+      const saved = await testCasesApi.update(testCase.id, {
+        is_active: !testCase.is_active,
+      });
+      savedCase(saved);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+  async function removeCase(testCase) {
+    if (!window.confirm(`Delete “${testCase.title}”?`)) return;
+    try {
+      await testCasesApi.remove(testCase.id);
+      setCases((current) => current.filter((item) => item.id !== testCase.id));
+    } catch (requestError) {
+      if (requestError.status === 409) setDeleteConflict(testCase);
+      else setError(requestError.message);
+    }
+  }
+  async function deactivateCase(testCase) {
+    try {
+      const saved = await testCasesApi.update(testCase.id, {
+        is_active: false,
+      });
+      savedCase(saved);
+      setDeleteConflict(null);
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  }
+  function changeProject(nextProjectId) {
+    rememberProject(nextProjectId);
+    setProjectId(nextProjectId);
+    setCasesStatus("loading");
+    setSuites([]);
+    setSuiteId("");
+    setCases([]);
+    setStatus("loading");
+    setError("");
+  }
 
-  return <main className="library-page"><section className="library-heading"><div><p className="eyebrow">Reusable verification definitions</p><h2>Test Library</h2><p>Organize executable cases into project-owned suites.</p></div>{projects.length > 0 && <label>Project<select value={projectId} onChange={(event) => changeProject(event.target.value)}>{projects.map((project) => <option value={project.id} key={project.id}>{project.name}</option>)}</select></label>}</section>
-    {error && <div className="library-alert" role="alert"><span>{error}</span><button onClick={() => setError('')} aria-label="Dismiss error"><X /></button></div>}
-    {status === 'loading' && !projects.length && <div className="projects-state"><LoaderCircle className="spinner" /><p>Loading test library...</p></div>}
-    {status === 'error' && !projects.length && <div className="projects-state projects-state--error"><p>{error}</p></div>}
-    {status === 'ready' && projects.length === 0 && <section className="projects-empty"><div><BookOpen /></div><p className="eyebrow">Project required</p><h3>Create a project first</h3><p>Test suites belong to a project. Create your first project before defining the test library.</p><Link className="library-link-button" to="/app/projects"><Plus />Create project</Link></section>}
-    {projects.length > 0 && <div className="library-layout"><aside className="suite-panel"><header><div><p>Test suites</p><span>{suites.length}</span></div><button onClick={() => setDialog({ kind: 'suite' })} aria-label="Create test suite"><Plus /></button></header>{status === 'loading' && <div className="suite-loading"><LoaderCircle className="spinner" /></div>}{status !== 'loading' && suites.length === 0 && <div className="suite-empty"><Layers3 /><p>No suites in<br /><strong>{selectedProject?.name}</strong></p><button onClick={() => setDialog({ kind: 'suite' })}>Create suite</button></div>}{suites.map((suite) => <button className={`suite-row ${suite.id === suiteId ? 'is-selected' : ''}`} key={suite.id} onClick={() => { setCasesStatus('loading'); setCases([]); setSuiteId(suite.id); setCaseAttempt((value) => value + 1) }}><Layers3 /><span><strong>{suite.name}</strong><small>{suite.description || 'No description'}</small></span><ChevronRight /></button>)}</aside>
-      <section className="cases-panel">{selectedSuite ? <><header><div><p className="eyebrow">{selectedProject?.name}</p><h3>{selectedSuite.name}</h3><p>{selectedSuite.description || 'No suite description provided.'}</p></div><div><button className="new-project-button" disabled={casesStatus !== 'ready'} onClick={() => setStarting(true)}>Start Verification</button><button className="secondary-button" onClick={() => setDialog({ kind: 'suite', item: selectedSuite })}><Pencil />Edit suite</button><button className="new-project-button" onClick={() => setDialog({ kind: 'case' })}><Plus />New test case</button></div></header><VerificationHistory key={suiteId} suiteId={suiteId} />{casesStatus === 'loading' ? <div className="case-empty" role="status">Loading test cases...</div> : casesStatus === 'error' ? <div className="case-empty">Unable to load test cases.<button onClick={() => { setCasesStatus('loading'); setError(''); setCaseAttempt((value) => value + 1) }}>Retry</button></div> : cases.length === 0 ? <div className="case-empty"><FileCheck2 /><h4>No test cases yet</h4><p>Define the executable steps and expected result for this suite.</p><button onClick={() => setDialog({ kind: 'case' })}><Plus />Create test case</button></div> : <div className="case-list">{cases.map((testCase) => <article className={`case-card ${!testCase.is_active ? 'is-inactive' : ''}`} key={testCase.id}><div className="case-status"><CheckCircle2 /></div><div className="case-body"><div><span className={`priority priority--${testCase.priority}`}>{testCase.priority}</span><span className={`execution-tag execution-tag--${testCase.execution_mode || 'manual'}`}>{testCase.execution_mode === 'automated' ? 'Automated' : 'Manual'}</span><span className="case-activity">{testCase.is_active ? 'Active' : 'Inactive'}</span></div><h4>{testCase.title}</h4><p>{testCase.description || 'No description provided.'}</p><details><summary>Execution definition</summary><div><strong>Execution mode</strong><p>{testCase.execution_mode === 'automated' ? 'Automated Playwright execution' : 'Manual verification'}</p>{testCase.execution_mode === 'automated' && testCase.automation_steps?.length > 0 && <><strong>Playwright steps</strong><ol className="step-overview-list">{testCase.automation_steps.map((step, sIdx) => <li key={sIdx}><code>{step.action}</code>{step.selector && <span> selector: <code>{step.selector}</code></span>}{step.value && <span> value: <code>{step.value}</code></span>}</li>)}</ol></>}<strong>Steps</strong><pre>{testCase.steps}</pre><strong>Expected result</strong><p>{testCase.expected_result}</p></div></details></div><div className="case-actions"><button onClick={() => setDialog({ kind: 'case', item: testCase })} aria-label={`Edit ${testCase.title}`}><Pencil /></button><button onClick={() => toggleCase(testCase)} aria-label={`${testCase.is_active ? 'Deactivate' : 'Activate'} ${testCase.title}`}><Power /></button></div></article>)}</div>}</> : <div className="case-empty"><Layers3 /><h4>Select or create a suite</h4><p>Choose a suite to view its test cases.</p></div>}</section></div>}
-    {starting && selectedSuite && <StartVerificationDialog project={selectedProject} suite={selectedSuite} activeCount={cases.filter((item) => item.is_active).length} onClose={() => setStarting(false)} />}
-    {dialog && <LibraryDialog kind={dialog.kind} item={dialog.item} parentId={dialog.kind === 'case' ? suiteId : projectId} onClose={() => setDialog(null)} onSaved={dialog.kind === 'case' ? savedCase : savedSuite} />}
-  </main>
+  return (
+    <main className="library-page">
+      <section className="library-heading">
+        <div>
+          <p className="eyebrow">Reusable verification definitions</p>
+          <h2>Test Library</h2>
+          <p>Organize executable cases into project-owned suites.</p>
+        </div>
+        {projects.length > 0 && (
+          <label>
+            Project
+            <select
+              value={projectId}
+              onChange={(event) => changeProject(event.target.value)}
+            >
+              {projects.map((project) => (
+                <option value={project.id} key={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </section>
+      {error && (
+        <div className="library-alert" role="alert">
+          <span>{error}</span>
+          <button onClick={() => setError("")} aria-label="Dismiss error">
+            <X />
+          </button>
+        </div>
+      )}
+      {deleteConflict && (
+        <div className="library-alert" role="alert">
+          <span>
+            This test case has run history and cannot be deleted. Deactivate it
+            instead.
+          </span>
+          <button onClick={() => deactivateCase(deleteConflict)}>
+            <Power />
+            Deactivate
+          </button>
+          <button
+            onClick={() => setDeleteConflict(null)}
+            aria-label="Dismiss delete warning"
+          >
+            <X />
+          </button>
+        </div>
+      )}
+      {status === "loading" && !projects.length && (
+        <div className="projects-state">
+          <LoaderCircle className="spinner" />
+          <p>Loading test library...</p>
+        </div>
+      )}
+      {status === "error" && !projects.length && (
+        <div className="projects-state projects-state--error">
+          <p>{error}</p>
+        </div>
+      )}
+      {status === "ready" && projects.length === 0 && (
+        <section className="projects-empty">
+          <div>
+            <BookOpen />
+          </div>
+          <p className="eyebrow">Project required</p>
+          <h3>Create a project first</h3>
+          <p>
+            Test suites belong to a project. Create your first project before
+            defining the test library.
+          </p>
+          <Link className="library-link-button" to="/app/projects">
+            <Plus />
+            Create project
+          </Link>
+        </section>
+      )}
+      {projects.length > 0 && (
+        <div className="library-layout">
+          <aside className="suite-panel">
+            <header>
+              <div>
+                <p>Test suites</p>
+                <span>{suites.length}</span>
+              </div>
+              <button
+                onClick={() => setDialog({ kind: "suite" })}
+                aria-label="Create test suite"
+              >
+                <Plus />
+              </button>
+            </header>
+            {status === "loading" && (
+              <div className="suite-loading">
+                <LoaderCircle className="spinner" />
+              </div>
+            )}
+            {status !== "loading" && suites.length === 0 && (
+              <div className="suite-empty">
+                <Layers3 />
+                <p>
+                  No suites in
+                  <br />
+                  <strong>{selectedProject?.name}</strong>
+                </p>
+                <button onClick={() => setDialog({ kind: "suite" })}>
+                  Create suite
+                </button>
+              </div>
+            )}
+            {suites.map((suite) => (
+              <button
+                className={`suite-row ${suite.id === suiteId ? "is-selected" : ""}`}
+                key={suite.id}
+                onClick={() => {
+                  setCasesStatus("loading");
+                  setCases([]);
+                  setSuiteId(suite.id);
+                  setCaseAttempt((value) => value + 1);
+                }}
+              >
+                <Layers3 />
+                <span>
+                  <strong>{suite.name}</strong>
+                  <small>{suite.description || "No description"}</small>
+                </span>
+                <ChevronRight />
+              </button>
+            ))}
+          </aside>
+          <section className="cases-panel">
+            {selectedSuite ? (
+              <>
+                <header>
+                  <div>
+                    <p className="eyebrow">{selectedProject?.name}</p>
+                    <h3>{selectedSuite.name}</h3>
+                    <p>
+                      {selectedSuite.description ||
+                        "No suite description provided."}
+                    </p>
+                  </div>
+                  <div>
+                    <button
+                      className="new-project-button"
+                      disabled={casesStatus !== "ready"}
+                      onClick={() => setStarting(true)}
+                    >
+                      Start Verification
+                    </button>
+                    <button
+                      className="secondary-button"
+                      onClick={() =>
+                        setDialog({ kind: "suite", item: selectedSuite })
+                      }
+                    >
+                      <Pencil />
+                      Edit suite
+                    </button>
+                    <button
+                      className="new-project-button"
+                      onClick={() => setDialog({ kind: "case" })}
+                    >
+                      <Plus />
+                      New test case
+                    </button>
+                  </div>
+                </header>
+                <VerificationHistory key={suiteId} suiteId={suiteId} />
+                {casesStatus === "loading" ? (
+                  <div className="case-empty" role="status">
+                    Loading test cases...
+                  </div>
+                ) : casesStatus === "error" ? (
+                  <div className="case-empty">
+                    Unable to load test cases.
+                    <button
+                      onClick={() => {
+                        setCasesStatus("loading");
+                        setError("");
+                        setCaseAttempt((value) => value + 1);
+                      }}
+                    >
+                      Retry
+                    </button>
+                  </div>
+                ) : cases.length === 0 ? (
+                  <div className="case-empty">
+                    <FileCheck2 />
+                    <h4>No test cases yet</h4>
+                    <p>
+                      Define the executable steps and expected result for this
+                      suite.
+                    </p>
+                    <button onClick={() => setDialog({ kind: "case" })}>
+                      <Plus />
+                      Create test case
+                    </button>
+                  </div>
+                ) : (
+                  <div className="case-list">
+                    {cases.map((testCase) => (
+                      <article
+                        className={`case-card ${!testCase.is_active ? "is-inactive" : ""}`}
+                        key={testCase.id}
+                      >
+                        <div className="case-status">
+                          <CheckCircle2 />
+                        </div>
+                        <div className="case-body">
+                          <div>
+                            <span
+                              className={`priority priority--${testCase.priority}`}
+                            >
+                              {testCase.priority}
+                            </span>
+                            <span
+                              className={`execution-tag execution-tag--${testCase.execution_mode || "manual"}`}
+                            >
+                              {testCase.execution_mode === "automated"
+                                ? "Automated"
+                                : "Manual"}
+                            </span>
+                            <span className="case-activity">
+                              {testCase.is_active ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                          <h4>{testCase.title}</h4>
+                          <p>
+                            {testCase.description || "No description provided."}
+                          </p>
+                          <details>
+                            <summary>Execution definition</summary>
+                            <div>
+                              <strong>Execution mode</strong>
+                              <p>
+                                {testCase.execution_mode === "automated"
+                                  ? "Automated Playwright execution"
+                                  : "Manual verification"}
+                              </p>
+                              {testCase.execution_mode === "automated" &&
+                                testCase.automation_steps?.length > 0 && (
+                                  <>
+                                    <strong>Playwright steps</strong>
+                                    <ol className="step-overview-list">
+                                      {testCase.automation_steps.map(
+                                        (step, sIdx) => (
+                                          <li key={sIdx}>
+                                            <code>{step.action}</code>
+                                            {step.selector && (
+                                              <span>
+                                                {" "}
+                                                selector:{" "}
+                                                <code>{step.selector}</code>
+                                              </span>
+                                            )}
+                                            {step.value && (
+                                              <span>
+                                                {" "}
+                                                value: <code>{step.value}</code>
+                                              </span>
+                                            )}
+                                          </li>
+                                        ),
+                                      )}
+                                    </ol>
+                                  </>
+                                )}
+                              <strong>Steps</strong>
+                              <pre>{testCase.steps}</pre>
+                              <strong>Expected result</strong>
+                              <p>{testCase.expected_result}</p>
+                            </div>
+                          </details>
+                        </div>
+                        <div className="case-actions">
+                          <button
+                            onClick={() =>
+                              setDialog({ kind: "case", item: testCase })
+                            }
+                            aria-label={`Edit ${testCase.title}`}
+                          >
+                            <Pencil />
+                          </button>
+                          <button
+                            onClick={() => toggleCase(testCase)}
+                            aria-label={`${testCase.is_active ? "Deactivate" : "Activate"} ${testCase.title}`}
+                          >
+                            <Power />
+                          </button>
+                          <button
+                            className="danger-action"
+                            onClick={() => removeCase(testCase)}
+                            aria-label={`Delete ${testCase.title}`}
+                          >
+                            <Trash2 />
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="case-empty">
+                <Layers3 />
+                <h4>Select or create a suite</h4>
+                <p>Choose a suite to view its test cases.</p>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+      {starting && selectedSuite && (
+        <StartVerificationDialog
+          project={selectedProject}
+          suite={selectedSuite}
+          activeCount={cases.filter((item) => item.is_active).length}
+          onClose={() => setStarting(false)}
+        />
+      )}
+      {dialog && (
+        <LibraryDialog
+          kind={dialog.kind}
+          item={dialog.item}
+          parentId={dialog.kind === "case" ? suiteId : projectId}
+          onClose={() => setDialog(null)}
+          onSaved={dialog.kind === "case" ? savedCase : savedSuite}
+        />
+      )}
+    </main>
+  );
 }

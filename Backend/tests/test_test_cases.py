@@ -177,6 +177,37 @@ def test_delete_owned_test_case(client: TestClient) -> None:
     ).status_code == 404
 
 
+def test_delete_case_with_run_history_returns_conflict_and_preserves_history(
+    client: TestClient,
+) -> None:
+    headers, suite_id = build_test_suite(client, "history.delete.case@example.com")
+    test_case = create_test_case(client, headers, suite_id)
+    run = client.post(
+        f"/api/v1/test-suites/{suite_id}/verification-runs",
+        headers=headers,
+        json={"name": "Historical run"},
+    )
+    assert run.status_code == 201
+    result_id = run.json()["results"][0]["id"]
+
+    response = client.delete(
+        f"/api/v1/test-cases/{test_case['id']}", headers=headers
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "This test case has run history and cannot be deleted. Deactivate it instead."
+    )
+    assert client.get(
+        f"/api/v1/test-cases/{test_case['id']}", headers=headers
+    ).status_code == 200
+    historical_result = client.get(
+        f"/api/v1/verification-results/{result_id}", headers=headers
+    )
+    assert historical_result.status_code == 200
+    assert historical_result.json()["test_case_id"] == test_case["id"]
+
+
 def test_cannot_delete_another_users_test_case(client: TestClient) -> None:
     owner_headers, suite_id = build_test_suite(
         client, "delete.case.owner@example.com"

@@ -65,4 +65,5 @@ class TestCase(Base):
     test_suite: Mapped["TestSuite"] = relationship(back_populates="test_cases")
     verification_results: Mapped[list["VerificationResult"]] = relationship(
         back_populates="test_case",
+        passive_deletes="all",
     )

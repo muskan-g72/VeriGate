@@ -25,6 +25,7 @@ import { ProjectsPage } from './pages/ProjectsPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { RunsPage } from './pages/RunsPage'
+import { RunComparisonPage } from './pages/RunComparisonPage'
 import { TestCasesPage } from './pages/TestCasesPage'
 import { TestLibraryPage } from './pages/TestLibraryPage'
 import { TestSuitesPage } from './pages/TestSuitesPage'
@@ -109,6 +110,7 @@ export default function App() {
         >
           <Route index element={<OverviewPage />} />
           <Route path="runs" element={<RunsPage />} />
+          <Route path="runs/compare" element={<RunComparisonPage />} />
           <Route path="issues" element={<IssuesPage />} />
           <Route path="issues/:issueId" element={<IssueDetailPage />} />
           <Route path="projects" element={<ProjectsPage />} />
