@@ -32,20 +32,27 @@ ALL_PROJECT_ROLES = (
     PROJECT_ROLE_VIEWER,
 )
 
-VIEW_PROJECT_ROLES = ALL_PROJECT_ROLES
-EXECUTE_VERIFICATION_ROLES = (
-    PROJECT_ROLE_OWNER,
-    PROJECT_ROLE_MANAGER,
-    PROJECT_ROLE_QA_LEAD,
-    PROJECT_ROLE_TESTER,
-)
-MANAGE_TEST_ASSET_ROLES = (
-    PROJECT_ROLE_OWNER,
-    PROJECT_ROLE_MANAGER,
-    PROJECT_ROLE_QA_LEAD,
-)
-MANAGE_PROJECT_ROLES = (PROJECT_ROLE_OWNER, PROJECT_ROLE_MANAGER)
-MANAGE_MEMBER_ROLES = (PROJECT_ROLE_OWNER, PROJECT_ROLE_MANAGER)
+# A single policy map keeps API authorization and the UI's published role matrix
+# aligned.  Add a capability here before using it in a route.
+ROLE_CAPABILITIES: dict[str, frozenset[str]] = {
+    PROJECT_ROLE_OWNER: frozenset({"view", "execute_verification", "manage_test_assets", "manage_project", "manage_members"}),
+    PROJECT_ROLE_MANAGER: frozenset({"view", "execute_verification", "manage_test_assets", "manage_project", "manage_members"}),
+    PROJECT_ROLE_QA_LEAD: frozenset({"view", "execute_verification", "manage_test_assets"}),
+    PROJECT_ROLE_TESTER: frozenset({"view", "execute_verification"}),
+    PROJECT_ROLE_DEVELOPER: frozenset({"view"}),
+    PROJECT_ROLE_VIEWER: frozenset({"view"}),
+}
+
+
+def roles_with(capability: str) -> tuple[str, ...]:
+    return tuple(role for role in ALL_PROJECT_ROLES if capability in ROLE_CAPABILITIES[role])
+
+
+VIEW_PROJECT_ROLES = roles_with("view")
+EXECUTE_VERIFICATION_ROLES = roles_with("execute_verification")
+MANAGE_TEST_ASSET_ROLES = roles_with("manage_test_assets")
+MANAGE_PROJECT_ROLES = roles_with("manage_project")
+MANAGE_MEMBER_ROLES = roles_with("manage_members")
 
 
 def is_system_admin(user: User) -> bool:

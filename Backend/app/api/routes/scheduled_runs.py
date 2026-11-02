@@ -4,6 +4,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser
 from app.api.routes.test_suites import get_owned_test_suite
@@ -15,7 +16,7 @@ from app.services.audit_service import record_audit_event
 from app.services.scheduled_run_service import execute_scheduled_run
 
 router = APIRouter()
-DatabaseSession = Annotated[object, Depends(get_db)]
+DatabaseSession = Annotated[Session, Depends(get_db)]
 
 
 @router.get("/test-suites/{test_suite_id}/scheduled-runs", response_model=list[ScheduledRunRead])
@@ -55,7 +56,17 @@ async def run_schedule_now(schedule_id: uuid.UUID, current_user: CurrentUser, da
     schedule = database_session.get(ScheduledRun, schedule_id)
     if not schedule:
         raise HTTPException(status_code=404, detail="Scheduled run not found")
-    get_owned_test_suite(schedule.test_suite_id, current_user.id, database_session, MANAGE_TEST_ASSET_ROLES)
+    suite = get_owned_test_suite(schedule.test_suite_id, current_user.id, database_session, MANAGE_TEST_ASSET_ROLES)
+    record_audit_event(
+        database_session,
+        user_id=current_user.id,
+        project_id=suite.project_id,
+        action="triggered",
+        resource_type="scheduled_run",
+        resource_id=schedule.id,
+        description=f"Manually triggered scheduled run '{schedule.name}'",
+    )
+    database_session.commit()
     await execute_scheduled_run(schedule.id)
     database_session.refresh(schedule)
     return schedule
